@@ -52,7 +52,6 @@ const renderRow = (
           onEditEntry={vi.fn()}
           onAdd={vi.fn()}
           onAbsenceClick={vi.fn()}
-          onAddAbsence={vi.fn()}
           onAddDayAbsence={vi.fn()}
           {...props}
         />
@@ -107,16 +106,6 @@ describe("TeamWeekRow", () => {
     expect(bar).not.toBeInTheDocument();
   });
 
-  it("records an absence from the Person cell", () => {
-    const onAddAbsence = vi.fn();
-    renderRow(row(), { onAddAbsence });
-
-    fireEvent.click(
-      screen.getByRole("button", { name: "Add an absence for Alice Cooper" }),
-    );
-    expect(onAddAbsence).toHaveBeenCalled();
-  });
-
   it("writes for a deactivated person only on the days before they left", () => {
     const onAdd = vi.fn();
     renderRow(
@@ -135,9 +124,6 @@ describe("TeamWeekRow", () => {
     expect(addButtons).toHaveLength(3);
     fireEvent.click(addButtons[2]);
     expect(onAdd).toHaveBeenCalledWith(WEEK_DATES[2]);
-    expect(
-      screen.getByRole("button", { name: "Add an absence for Alice Cooper" }),
-    ).toBeInTheDocument();
   });
 
   it("writes nothing in an earlier spell they were deactivated for", () => {
@@ -238,9 +224,6 @@ describe("TeamWeekRow", () => {
       screen.getByRole("button", { name: "Vacation, open the absence" }),
     );
     expect(onAbsenceClick).toHaveBeenCalledWith(vacation);
-    expect(
-      screen.queryByRole("button", { name: "Add an absence for Alice Cooper" }),
-    ).not.toBeInTheDocument();
   });
 
   it("marks the highlighted row and scrolls to it", () => {

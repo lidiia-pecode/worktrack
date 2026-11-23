@@ -21,6 +21,10 @@ type DatePickerProps = {
   minDate?: string | null;
   /** The latest day that can be chosen, YYYY-MM-DD. */
   maxDate?: string | null;
+  /** Days inside the limits that can't be chosen, YYYY-MM-DD. */
+  isDayDisabled?: (date: string) => boolean;
+  /** The first of a month the calendar moves to, YYYY-MM-DD; it opens on `value`'s. */
+  onMonthChange?: (month: string) => void;
   label?: string;
   description?: string;
   error?: string;
@@ -33,6 +37,8 @@ export const DatePicker = ({
   onChange,
   minDate,
   maxDate,
+  isDayDisabled,
+  onMonthChange,
   label,
   description,
   error,
@@ -74,6 +80,12 @@ export const DatePicker = ({
               autoFocusDate={day}
               minDate={minDate ? fromISODate(minDate) : undefined}
               maxDate={maxDate ? fromISODate(maxDate) : undefined}
+              isDayDisabled={
+                isDayDisabled && ((day) => isDayDisabled(toISODate(day)))
+              }
+              onMonthChange={
+                onMonthChange && ((month) => onMonthChange(toISODate(month)))
+              }
               onSelectDay={(picked) => {
                 onChange(toISODate(picked));
                 setOpen(false);

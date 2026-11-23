@@ -24,6 +24,8 @@ const timelogsQueries = createEntityQuery<TimeLog, TimeLogQueryParams>({
   keepPreviousData: true,
 });
 
+export const useAllTimeLogsQuery = timelogsQueries.useAllPagesQuery;
+
 export const useTimeLogsMutations = createEntityMutations<
   TimeLog,
   TimeLogPayload,

@@ -29,10 +29,7 @@ import {
   toISODate,
   todayISODate,
 } from "@/lib/utils/date";
-import {
-  mapAbsencesByUserAndDate,
-  newAbsenceStartDate,
-} from "@/lib/utils/absence";
+import { mapAbsencesByUserAndDate } from "@/lib/utils/absence";
 import { lockLookupRange } from "@/lib/utils/reporting-period";
 import { canWriteTimeLogsFor, fullName } from "@/lib/utils/user";
 import {
@@ -351,18 +348,6 @@ export const TeamTimeView = ({
     setNonWorkDay(null);
   };
 
-  const isCurrentWeek = dateFrom <= todayIso && todayIso <= dateTo;
-  const openNewAbsence = (user: TeamSummaryUser) =>
-    setAbsenceForm({
-      user,
-      date: newAbsenceStartDate({
-        today: fromISODate(todayIso),
-        weekStart,
-        isCurrentWeek,
-        isEditable,
-      }),
-    });
-
   const sortBy = (key: TeamSortKey) => setSort(nextTeamSort(sort, key));
   const ariaSort = sort.direction === "asc" ? "ascending" : "descending";
 
@@ -578,7 +563,6 @@ export const TeamTimeView = ({
                       absence,
                     })
                   }
-                  onAddAbsence={() => openNewAbsence(row.user)}
                   onAddDayAbsence={(date) =>
                     setAbsenceForm({ user: row.user, date, isSingleDay: true })
                   }

@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useForm, useWatch, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Info, Lock, Trash2 } from "lucide-react";
+import { CalendarPlus, Info, Lock, Trash2, X } from "lucide-react";
 import TextareaAutosize from "react-textarea-autosize";
 
 import { Absence, AbsencePayload, UpdateAbsencePayload, User } from "@/types";
@@ -24,6 +24,9 @@ import {
   isISODateRange,
   formatDateRangeLabel,
   shiftISODate,
+  firstOfMonth,
+  isWeekend,
+  toISODate,
 } from "@/lib/utils/date";
 import {
   AbsenceLockedPart,
@@ -31,7 +34,13 @@ import {
   isAbsenceFrozen,
 } from "@/lib/utils/reporting-period";
 import { fullName } from "@/lib/utils/user";
-import { useAbsenceDay, useAbsencesMutations } from "@/hooks/useAbsences";
+import {
+  useAbsenceDay,
+  useAbsencesMutations,
+  useAllAbsencesQuery,
+} from "@/hooks/useAbsences";
+import { useAllTimeLogsQuery } from "@/hooks/useTimelogs";
+import { useLockedDates } from "@/hooks/useReportingPeriods";
 import { usePlanningEntries } from "@/hooks/usePlanning";
 import { Button } from "@/components/ui/button";
 import {
@@ -46,7 +55,7 @@ import { ImpactDialog } from "../../shared/ImpactDialog";
 import { SegmentedControl } from "../../shared/SegmentedControl";
 import { TimePicker } from "../../shared/TimePicker";
 import { FormSelect } from "../../shared/FormSelect";
-import { DatePicker, DateRangePicker } from "../../shared/inputs";
+import { DatePicker } from "../../shared/inputs";
 import { ResourceFormModal } from "../../shared/resource/ResourceFormModal";
 import { PartLoadError } from "../../shared/PartLoadError";
 import { ChangedByNote } from "./ChangedByNote";
@@ -70,8 +79,8 @@ const absenceSchema = z
     type: z.nativeEnum(AbsenceType, { message: "Pick a reason" }),
     startDate: z.string().min(1, "Pick a first day"),
     endDate: z.string().min(1, "Pick a last day"),
-    /** Part of the day, in hours and minutes, on a form about one day. */
-    isPart: z.boolean(),
+    /** How much of one day: all of it, what logging left, or hours set. */
+    length: z.enum(["whole", "rest", "hours"]),
     partHours: z.number(),
     partMinutes: z.number(),
     note: optionalNoteSchema,
@@ -97,12 +106,7 @@ const TYPE_OPTIONS = Object.values(AbsenceType).map((type) => ({
   label: ABSENCE_TYPE_LABELS[type],
 }));
 
-type Length = "whole" | "part";
-
-const LENGTH_OPTIONS: { value: Length; label: string }[] = [
-  { value: "whole", label: "Whole day" },
-  { value: "part", label: "Part of the day" },
-];
+type Length = AbsenceFormData["length"];
 
 /** A day's working, logged and part-away minutes, as the server checks them. */
 const partDayError = ({
@@ -124,6 +128,96 @@ const partDayError = ({
   }
   if (isMeasuredAgainstLogged && minutes > left) {
     return `Only ${formatDuration(left)} of this day is left: ${formatDuration(loggedMinutes)} is already logged.`;
+  }
+  return undefined;
+};
+
+const UNAVAILABLE_DAYS_HINT =
+  "Days with time logged, another absence or in a locked month can't be chosen.";
+
+/**
+ * The days a whole-day absence can't take, as the server refuses them: time
+ * logged, another of the person's absences, a locked month. Read for the
+ * days the pickers show and the chosen ones.
+ */
+const useUnavailableDays = ({
+  userId,
+  absenceId,
+  from,
+  to,
+  enabled,
+}: {
+  userId: string;
+  /** The absence being edited, whose own days stay free. */
+  absenceId?: string;
+  from: string;
+  to: string;
+  enabled: boolean;
+}) => {
+  // The months these days are in, which can be outside the page's own.
+  const locks = useLockedDates(from, to);
+  const range = { userId, dateFrom: from, dateTo: to };
+  const logs = useAllTimeLogsQuery(range, { enabled });
+  const others = useAllAbsencesQuery(range, { enabled });
+  const { isLocked } = locks;
+  const timelogs = logs.items;
+  const absences = others.items;
+  // Read for these very days: not loading, failed, or kept from other days.
+  const isKnown =
+    !locks.isLoading &&
+    !locks.isError &&
+    [logs, others].every(
+      (list) => !list.isLoading && !list.isError && !list.isPlaceholderData,
+    );
+
+  const takenDays = useMemo(() => {
+    const days = new Set(timelogs.map((log) => log.date));
+    absences
+      .filter((other) => other.id !== absenceId)
+      .forEach((other) => {
+        for (
+          let day = other.startDate;
+          day <= other.endDate;
+          day = shiftISODate(day, 1)
+        ) {
+          days.add(day);
+        }
+      });
+    return days;
+  }, [timelogs, absences, absenceId]);
+
+  const isUnavailable = useCallback(
+    (date: string) => isLocked(date) || takenDays.has(date),
+    [isLocked, takenDays],
+  );
+
+  return { isUnavailable, isKnown: enabled && isKnown };
+};
+
+/** The first working day from `from` to `until` an absence can take. */
+const firstFreeWorkingDay = (
+  from: string,
+  until: string,
+  isUnavailable: (date: string) => boolean,
+) => {
+  for (let day = from; day <= until; day = shiftISODate(day, 1)) {
+    if (!isWeekend(fromISODate(day)) && !isUnavailable(day)) return day;
+  }
+  return undefined;
+};
+
+/** The first unavailable day after `from`, up to `until`, if there is one. */
+const firstUnavailableAfter = (
+  from: string,
+  until: string,
+  isUnavailable: (date: string) => boolean,
+) => {
+  for (
+    let day = shiftISODate(from, 1);
+    day <= until;
+    day = shiftISODate(day, 1)
+  ) {
+    if (isUnavailable(day)) return day;
   }
   return undefined;
 };
@@ -212,7 +306,7 @@ export const AbsenceFormModal = ({
       type: absence?.type ?? AbsenceType.VACATION,
       startDate: absence?.startDate ?? date,
       endDate: absence?.endDate ?? lastDate,
-      isPart: absence?.minutes != null,
+      length: absence?.minutes != null ? "hours" : "whole",
       partHours: Math.floor((absence?.minutes ?? 0) / 60),
       partMinutes: (absence?.minutes ?? 0) % 60,
       note: absence?.note ?? "",
@@ -233,23 +327,32 @@ export const AbsenceFormModal = ({
     defaultValues,
   });
 
+  // A new range moves once, as it opens, off a day it can't take.
+  const hasLookedForFreeDay = useRef(false);
+
   useEffect(() => {
     reset(defaultValues);
+    hasLookedForFreeDay.current = false;
   }, [defaultValues, reset]);
 
-  const [startDate, endDate, isPartChosen, partHours, partMinutes] = useWatch({
+  const [startDate, endDate, chosenLength, partHours, partMinutes] = useWatch({
     control,
-    name: ["startDate", "endDate", "isPart", "partHours", "partMinutes"],
+    name: ["startDate", "endDate", "length", "partHours", "partMinutes"],
   });
   const [triedSaving, setTriedSaving] = useState(false);
+  // A new absence opened from a day is that day, unless more days are added.
+  const opensOnDay = isSingleDay && !absence;
+  const [addsDays, setAddsDays] = useState(false);
+  const [shownMonth, setShownMonth] = useState(() =>
+    toISODate(firstOfMonth(fromISODate(date))),
+  );
 
   // Part of a day is offered on a form about one day: opened from a day, or
   // an absence of one day, while it still covers one day.
   const isAboutOneDay =
     isSingleDay || (!!absence && absence.startDate === absence.endDate);
-  const offersPart = isAboutOneDay && !lockedPart && startDate === endDate;
-  const isPart = offersPart && isPartChosen;
-  const partTotal = partHours * 60 + partMinutes;
+  const offersPart =
+    isAboutOneDay && !lockedPart && !addsDays && startDate === endDate;
 
   const {
     data: day,
@@ -262,6 +365,33 @@ export const AbsenceFormModal = ({
   const leftOfDay = day
     ? Math.max(0, day.workingMinutes - day.loggedMinutes)
     : 0;
+  // "Rest of the day" is what logging left, so it is offered once time is
+  // logged and something of the day is left.
+  const offersRest =
+    !!day &&
+    day.loggedMinutes > 0 &&
+    leftOfDay > 0 &&
+    leftOfDay < day.workingMinutes;
+  const length: Length = !offersPart
+    ? "whole"
+    : chosenLength === "rest" && !offersRest
+      ? "hours"
+      : chosenLength;
+  const isPart = length !== "whole";
+  const partTotal =
+    length === "rest" ? leftOfDay : partHours * 60 + partMinutes;
+  const lengthOptions: { value: Length; label: string }[] = [
+    { value: "whole", label: "Whole day" },
+    ...(offersRest
+      ? [
+          {
+            value: "rest" as const,
+            label: `Rest of the day · ${formatDuration(leftOfDay)}`,
+          },
+        ]
+      : []),
+    { value: "hours", label: "Set hours" },
+  ];
   const partError =
     isPart && day
       ? partDayError({
@@ -279,10 +409,29 @@ export const AbsenceFormModal = ({
   const shownPartError =
     partError && (triedSaving || partTotal > 0) ? partError : undefined;
 
-  const setPartTotal = (total: number) => {
-    setValue("partHours", Math.floor(total / 60), { shouldDirty: true });
-    setValue("partMinutes", total % 60, { shouldDirty: true });
-  };
+  // Whole days are picked around the ones the server would refuse.
+  const picksDays = !lockedPart && !isPart && (!opensOnDay || addsDays);
+  // The month on show with the grid's days around it, and the chosen days.
+  const daysFrom = [shiftISODate(shownMonth, -7), startDate].sort()[0];
+  const daysTo = [
+    shiftISODate(toISODate(firstOfMonth(fromISODate(shownMonth), 1)), 14),
+    toISODate(firstOfMonth(fromISODate(endDate), 1)),
+  ].sort()[1];
+  const { isUnavailable, isKnown: areDaysKnown } = useUnavailableDays({
+    userId,
+    absenceId: absence?.id,
+    from: daysFrom,
+    to: daysTo,
+    enabled: open && picksDays && isISODateRange(startDate, endDate),
+  });
+  const lastDayLimit = shiftISODate(startDate, MAX_ABSENCE_DAYS - 1);
+  // The last day can't reach past a day the absence can't take.
+  const firstBlocked = picksDays
+    ? firstUnavailableAfter(startDate, lastDayLimit, isUnavailable)
+    : undefined;
+  const latestLastDay = firstBlocked
+    ? shiftISODate(firstBlocked, -1)
+    : lastDayLimit;
 
   const isRangeComplete = isISODateRange(startDate, endDate);
   const {
@@ -325,10 +474,54 @@ export const AbsenceFormModal = ({
     };
   }, [isPart, isRangeComplete, arePlansKnown, plansInRange, isLocked]);
 
-  const setDays = (first: string, last: string) => {
+  // A first day past the last, or one with a day it can't take before the
+  // last, takes the last day with it.
+  const setFirstDay = (first: string) => {
     setValue("startDate", first, { shouldDirty: true, shouldValidate: true });
-    setValue("endDate", last, { shouldDirty: true, shouldValidate: true });
+    const blocked = firstUnavailableAfter(first, endDate, isUnavailable);
+    if (endDate < first || blocked) {
+      setValue("endDate", first, { shouldDirty: true, shouldValidate: true });
+    }
   };
+
+  const setLastDay = (last: string) =>
+    setValue("endDate", last, { shouldDirty: true, shouldValidate: true });
+
+  const backToOneDay = () => {
+    setAddsDays(false);
+    setLastDay(startDate);
+  };
+
+  // A new range opens on a day it can take: the day offered may already have
+  // time logged, or be away. A day chosen in the form stays as chosen.
+  useEffect(() => {
+    if (absence || opensOnDay || !areDaysKnown) return;
+    if (hasLookedForFreeDay.current) return;
+    hasLookedForFreeDay.current = true;
+    if (!isUnavailable(startDate)) return;
+
+    const freeDay = firstFreeWorkingDay(startDate, daysTo, isUnavailable);
+    if (freeDay) {
+      setValue("startDate", freeDay);
+      setValue("endDate", freeDay);
+    }
+  }, [
+    absence,
+    opensOnDay,
+    areDaysKnown,
+    isUnavailable,
+    startDate,
+    daysTo,
+    setValue,
+  ]);
+
+  // Named only when some day in reach is one the absence can't take.
+  const hasUnavailableDays =
+    picksDays &&
+    !!firstUnavailableAfter(shiftISODate(daysFrom, -1), daysTo, isUnavailable);
+  const unavailableHint = hasUnavailableDays
+    ? UNAVAILABLE_DAYS_HINT
+    : undefined;
 
   const onSubmit = async (data: AbsenceFormData) => {
     setTriedSaving(true);
@@ -371,13 +564,11 @@ export const AbsenceFormModal = ({
     }
   };
 
-  // One day reads as its day, a range as its first and last.
-  const firstDay = absence?.startDate ?? date;
-  const lastDay = absence?.endDate ?? lastDate;
+  // One day reads as its day, a range as its first and last, as chosen.
   const absenceDaysLabel =
-    isSingleDay || firstDay === lastDay
-      ? formatLongDayLabel(fromISODate(firstDay))
-      : formatDateRangeLabel(firstDay, lastDay);
+    startDate === endDate
+      ? formatLongDayLabel(fromISODate(startDate))
+      : formatDateRangeLabel(startDate, endDate);
 
   return (
     <>
@@ -483,46 +674,104 @@ export const AbsenceFormModal = ({
             </>
           )}
 
-          {!isSingleDay && !lockedPart && !isPart && (
-            <Field
-              id="absence-days"
-              label="Days"
-              group
-              error={errors.startDate?.message ?? errors.endDate?.message}
-            >
-              <DateRangePicker
-                startDate={startDate}
-                endDate={endDate}
-                invalid={!!(errors.startDate || errors.endDate)}
-                onChange={setDays}
-              />
-            </Field>
-          )}
-
           {offersPart && (
             <SegmentedControl
               label="How long"
-              options={LENGTH_OPTIONS}
-              value={isPart ? "part" : "whole"}
-              onChange={(length) =>
-                setValue("isPart", length === "part", { shouldDirty: true })
+              options={lengthOptions}
+              value={length}
+              onChange={(next) =>
+                setValue("length", next, { shouldDirty: true })
               }
-              className="*:flex-1"
+              className="*:flex-auto *:whitespace-nowrap"
             />
           )}
 
-          {isPart && (
+          {picksDays && !opensOnDay && (
+            <Field
+              id="absence-days"
+              group
+              error={errors.startDate?.message ?? errors.endDate?.message}
+              description={unavailableHint}
+            >
+              <div className="grid gap-4 sm:grid-cols-2">
+                <DatePicker
+                  label="First day"
+                  value={startDate}
+                  isDayDisabled={isUnavailable}
+                  onMonthChange={setShownMonth}
+                  onChange={setFirstDay}
+                />
+                <DatePicker
+                  label="Last day"
+                  value={endDate}
+                  minDate={startDate}
+                  maxDate={latestLastDay}
+                  isDayDisabled={isUnavailable}
+                  onMonthChange={setShownMonth}
+                  onChange={setLastDay}
+                />
+              </div>
+            </Field>
+          )}
+
+          {opensOnDay && !isPart && !addsDays && (
+            <Button
+              type="button"
+              variant="link"
+              size="sm"
+              className="-mt-3 px-0"
+              onClick={() => setAddsDays(true)}
+            >
+              <CalendarPlus className="size-4" aria-hidden />
+              Add more days
+            </Button>
+          )}
+
+          {opensOnDay && addsDays && (
+            <Field
+              id="absence-until"
+              group
+              error={errors.endDate?.message}
+              description={unavailableHint}
+            >
+              <div className="flex items-end gap-2">
+                <DatePicker
+                  label="Until"
+                  value={endDate}
+                  minDate={startDate}
+                  maxDate={latestLastDay}
+                  isDayDisabled={isUnavailable}
+                  onMonthChange={setShownMonth}
+                  onChange={setLastDay}
+                  className="flex-1"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Back to one day"
+                  onClick={backToOneDay}
+                >
+                  <X className="size-4" aria-hidden />
+                </Button>
+              </div>
+            </Field>
+          )}
+
+          {length === "hours" && (
             <Field
               id="absence-hours"
-              label="Hours away"
               group
               error={shownPartError}
               description={
                 day &&
-                `${formatDuration(day.workingMinutes)} working day · ${formatDuration(day.loggedMinutes)} logged · ${formatDuration(leftOfDay)} left`
+                `${formatDuration(day.workingMinutes)} working day · ${formatDuration(day.loggedMinutes)} logged`
               }
             >
-              <div className="flex items-center gap-3">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-sm font-medium text-foreground">
+                  Hours away
+                </span>
                 <TimePicker
                   hours={partHours}
                   minutes={partMinutes}
@@ -536,17 +785,12 @@ export const AbsenceFormModal = ({
                   error={!!shownPartError}
                   aria-label="Hours away"
                 />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="md"
-                  onClick={() => setPartTotal(leftOfDay)}
-                  disabled={!day || leftOfDay === 0}
-                >
-                  Rest of the day
-                </Button>
               </div>
             </Field>
+          )}
+
+          {length === "rest" && shownPartError && (
+            <p className="text-xs text-destructive-text">{shownPartError}</p>
           )}
 
           {isPart && dayFailed && (
@@ -579,7 +823,7 @@ export const AbsenceFormModal = ({
               <span>
                 Deletes {removedPlans.count}{" "}
                 {removedPlans.count === 1 ? "plan" : "plans"} on{" "}
-                {isSingleDay ? "this day" : "these days"}:{" "}
+                {startDate === endDate ? "this day" : "these days"}:{" "}
                 {removedPlans.projects}
               </span>
             </p>

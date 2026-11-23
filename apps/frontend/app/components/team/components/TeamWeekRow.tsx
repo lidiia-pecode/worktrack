@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { CalendarOff } from "lucide-react";
 
 import { Absence, PlanningEntry, TeamSummaryRow, TimeLog } from "@/types";
 import { formatDuration, isWeekend, toISODate } from "@/lib/utils/date";
@@ -9,22 +8,15 @@ import { isRangeLocked } from "@/lib/utils/reporting-period";
 import {
   closedSpellOn,
   fullName,
-  isClosedOn,
   leaverLabel,
   moveLabel,
 } from "@/lib/utils/user";
 import { cn } from "@/lib/utils/cn";
 import { factsLine } from "@/lib/utils/text";
 
-import { PERSON_ACTION, PersonLabel } from "../../shared/PersonLabel";
+import { PersonLabel } from "../../shared/PersonLabel";
 import { ReportBar } from "../../reports/components/ReportBar";
 import { RowTotalCell } from "../../shared/week/RowTotalCell";
-import { Button } from "@/components/ui/button";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { TeamDayCell } from "./TeamDayCell";
 import { STICKY_PERSON_CELL } from "../../shared/week/sticky-column";
 import { ClosedDayCell } from "../../shared/week/ClosedDayCell";
@@ -48,8 +40,6 @@ type TeamWeekRowProps = {
   onEditEntry: (timelog: TimeLog) => void;
   onAdd: (date: Date, plannedProjectId?: string) => void;
   onAbsenceClick: (absence: Absence) => void;
-  /** Whole days for the person, from beside their name. */
-  onAddAbsence: () => void;
   /** One day still to come, whole or in part, from the day itself. */
   onAddDayAbsence: (date: string) => void;
 };
@@ -69,7 +59,6 @@ export const TeamWeekRow = ({
   onEditEntry,
   onAdd,
   onAbsenceClick,
-  onAddAbsence,
   onAddDayAbsence,
 }: TeamWeekRowProps) => {
   const rowRef = useRef<HTMLTableRowElement>(null);
@@ -95,7 +84,7 @@ export const TeamWeekRow = ({
         scope="row"
         className={cn(
           STICKY_PERSON_CELL,
-          "group/person p-0 text-left align-top font-normal",
+          "p-0 text-left align-top font-normal",
         )}
         // The sticky cell needs its opaque ground, so the tint is laid over it.
         style={
@@ -109,32 +98,6 @@ export const TeamWeekRow = ({
       >
         <div className="flex min-w-0 items-start gap-2.5 py-2 pr-1.5 pl-2.5">
           <PersonLabel user={row.user}>{personFacts(row)}</PersonLabel>
-
-          {/* Only while some day of the shown week is open: in a locked week
-              or a spell the person was gone, there is nothing to add here. */}
-          {canWrite &&
-            weekDates.some((date) => {
-              const iso = toISODate(date);
-              return !isClosedOn(row.closedSpells, iso) && !isLocked(iso);
-            }) && (
-              <Tooltip>
-                <TooltipTrigger
-                  render={
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="iconSm"
-                      onClick={onAddAbsence}
-                      aria-label={`Add an absence for ${name}`}
-                      className={PERSON_ACTION}
-                    />
-                  }
-                >
-                  <CalendarOff aria-hidden />
-                </TooltipTrigger>
-                <TooltipContent>Add an absence</TooltipContent>
-              </Tooltip>
-            )}
         </div>
       </th>
 
