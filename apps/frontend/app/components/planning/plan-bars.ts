@@ -1,5 +1,8 @@
 import { Absence, ClosedSpell, PlanningEntry, PlanningProject } from "@/types";
-import { ABSENCE_TYPE_SHORT_LABELS } from "@/lib/utils/absence";
+import {
+  ABSENCE_TYPE_SHORT_LABELS,
+  isPartDayAbsence,
+} from "@/lib/utils/absence";
 import { formatDuration } from "@/lib/utils/date";
 import { CLOSED_DAY_TEXT } from "@/lib/utils/user";
 
@@ -81,6 +84,11 @@ export const describePlanDay = ({
   const plans = entries.map(
     (entry) => `${entry.project.name} ${formatDuration(entry.plannedMinutes)}`,
   );
-  const parts = [absence && ABSENCE_TYPE_SHORT_LABELS[absence.type], ...plans];
+  const away =
+    absence &&
+    (isPartDayAbsence(absence)
+      ? `${ABSENCE_TYPE_SHORT_LABELS[absence.type]} ${formatDuration(absence.minutes)}`
+      : ABSENCE_TYPE_SHORT_LABELS[absence.type]);
+  const parts = [away, ...plans];
   return parts.filter(Boolean).join(", ") || "nothing planned";
 };

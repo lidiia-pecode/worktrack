@@ -8,6 +8,7 @@ import {
 import {
   ABSENCE_TYPE_SHORT_LABELS,
   formatAbsenceRange,
+  isPartDayAbsence,
 } from "@/lib/utils/absence";
 import { CLOSED_DAY_TEXT, closedSpellOn, fullName } from "@/lib/utils/user";
 import { cn } from "@/lib/utils/cn";
@@ -91,27 +92,50 @@ export const PlanningWeekRow = ({
 
       <td colSpan={dates.length} className="relative p-0 align-top">
         {/* The days' grounds, under the plans. */}
-        <div aria-hidden className="absolute inset-0 grid" style={columns}>
+        <div className="absolute inset-0 grid" style={columns}>
           {dates.map((date, index) => {
             const closed = closedOn[index];
+            const absence = absencesByDate[date];
             const className = cn(
               "border-r border-border/60",
-              absencesByDate[date]
+              absence
                 ? ABSENCE_PATTERN
                 : closed || !isActive || isLocked(date)
                   ? "bg-day-locked"
                   : "bg-card",
             );
+            // Part of a day away keeps its plans over it, so the striped day
+            // itself opens the absence and names what is left to plan.
+            if (absence && isPartDayAbsence(absence)) {
+              return (
+                <TooltipTrigger
+                  key={date}
+                  handle={tooltip}
+                  payload={partDayText(absence, row, date)}
+                  render={
+                    <button
+                      type="button"
+                      onClick={() => onAbsenceClick(absence)}
+                      aria-label={`${ABSENCE_TYPE_SHORT_LABELS[absence.type]} for ${fullName(row.user)}, ${formatAbsenceRange(absence)}, open the absence`}
+                    />
+                  }
+                  className={cn(
+                    className,
+                    "cursor-pointer focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring",
+                  )}
+                />
+              );
+            }
             return closed ? (
               <TooltipTrigger
                 key={date}
                 handle={tooltip}
                 payload={CLOSED_DAY_TEXT[closed]}
-                render={<span />}
+                render={<span aria-hidden />}
                 className={className}
               />
             ) : (
-              <span key={date} className={className} />
+              <span key={date} aria-hidden className={className} />
             );
           })}
         </div>
@@ -159,7 +183,15 @@ export const PlanningWeekRow = ({
           className="pointer-events-none absolute inset-0 grid auto-rows-6 gap-y-0.75 py-1.5"
           style={columns}
         >
-          {runsOf(dates.map((date) => absencesByDate[date])).map((run) => (
+          {runsOf(
+            dates.map((date) => {
+              const absence = absencesByDate[date];
+              // Part of a day opens from its striped day instead.
+              return absence && !isPartDayAbsence(absence)
+                ? absence
+                : undefined;
+            }),
+          ).map((run) => (
             <button
               key={`absence-${run.start}`}
               type="button"
@@ -205,4 +237,22 @@ export const PlanningWeekRow = ({
       />
     </tr>
   );
+};
+
+/** "Vacation · 2h · 6h left to plan", or how far the day's plans are over. */
+const partDayText = (
+  absence: Absence & { minutes: number },
+  row: Row,
+  date: string,
+) => {
+  const limit = row.dayLimits.find((day) => day.date === date)?.minutes ?? 0;
+  const planned = row.entries
+    .filter((entry) => entry.date === date)
+    .reduce((sum, entry) => sum + entry.plannedMinutes, 0);
+  const room =
+    planned > limit
+      ? `${formatDuration(planned - limit)} over`
+      : `${formatDuration(limit - planned)} left to plan`;
+
+  return `${ABSENCE_TYPE_SHORT_LABELS[absence.type]} · ${formatDuration(absence.minutes)} · ${room}`;
 };

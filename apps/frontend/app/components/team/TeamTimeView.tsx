@@ -77,6 +77,8 @@ type AbsenceForm = {
   user: TeamSummaryUser;
   date: string;
   absence?: Absence;
+  /** Opened from a day: that day only, whole or in part. */
+  isSingleDay?: boolean;
 };
 
 type TeamTimeViewProps = {
@@ -577,6 +579,9 @@ export const TeamTimeView = ({
                     })
                   }
                   onAddAbsence={() => openNewAbsence(row.user)}
+                  onAddDayAbsence={(date) =>
+                    setAbsenceForm({ user: row.user, date, isSingleDay: true })
+                  }
                 />
               ))}
             </tbody>
@@ -595,6 +600,7 @@ export const TeamTimeView = ({
           user={absenceForm.user}
           date={absenceForm.date}
           absence={absenceForm.absence}
+          isSingleDay={absenceForm.isSingleDay}
           isLocked={isLocked}
           onClose={() => setAbsenceForm(null)}
         />
@@ -624,6 +630,14 @@ export const TeamTimeView = ({
             timelogActions.create.isPending || timelogActions.update.isPending
           }
           isDeleting={timelogActions.delete.isPending}
+          onAddAbsence={() => {
+            setEntryForm(null);
+            setAbsenceForm({
+              user: entryForm.user,
+              date: entryForm.date,
+              isSingleDay: true,
+            });
+          }}
         />
       )}
     </div>

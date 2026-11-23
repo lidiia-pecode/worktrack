@@ -53,6 +53,7 @@ const renderRow = (
           onAdd={vi.fn()}
           onAbsenceClick={vi.fn()}
           onAddAbsence={vi.fn()}
+          onAddDayAbsence={vi.fn()}
           {...props}
         />
       </tbody>

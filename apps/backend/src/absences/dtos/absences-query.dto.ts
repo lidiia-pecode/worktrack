@@ -20,3 +20,13 @@ export class AbsencesQuery extends PaginationQuery {
   @IsUUID()
   teamId?: string;
 }
+
+/** One person's day; the caller's own without `userId`. */
+export class AbsenceDayQuery {
+  @IsDateWithoutTimeString()
+  date!: string;
+
+  @IsOptional()
+  @IsUUID()
+  userId?: string;
+}

@@ -50,6 +50,7 @@ const renderDay = (
     canLogTime={canLogTime}
     onAddClick={onAddClick}
     onAbsenceClick={vi.fn()}
+    onAddAbsenceClick={vi.fn()}
     onEntryClick={vi.fn()}
   />
 );
@@ -229,6 +230,7 @@ describe("DayColumn", () => {
         isEditable={false}
         onAddClick={vi.fn()}
         onAbsenceClick={onAbsenceClick}
+        onAddAbsenceClick={vi.fn()}
         onEntryClick={vi.fn()}
       />,
     );

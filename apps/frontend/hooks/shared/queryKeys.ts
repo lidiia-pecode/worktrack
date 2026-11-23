@@ -129,6 +129,9 @@ export const queryKeys = {
     infinite: (params?: QueryParams) => createInfiniteKey("absences", params),
 
     allPages: (params?: QueryParams) => createAllPagesKey("absences", params),
+
+    day: (date: string, userId?: string) =>
+      ["absences", "day", date, userId ?? "self"] as const,
   },
 
   capacity: {

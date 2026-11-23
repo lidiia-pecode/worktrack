@@ -1,12 +1,17 @@
 import { Absence, PeriodPreview as Preview } from "@/types";
 import {
   addDays,
+  formatDayMonthLabel,
   formatDuration,
   fromISODate,
   isWeekend,
   toISODate,
 } from "@/lib/utils/date";
-import { ABSENCE_TYPE_LABELS, formatAbsenceRange } from "@/lib/utils/absence";
+import {
+  ABSENCE_TYPE_LABELS,
+  formatAbsenceRange,
+  isPartDayAbsence,
+} from "@/lib/utils/absence";
 
 import { DayShare, problemSummary } from "./period-lines";
 import { PlanSummary } from "./PlanSummary";
@@ -74,10 +79,15 @@ export const PeriodPreview = ({
   const conflicts = preview?.problems ?? [];
   const inAnotherTeam = (preview?.daysInAnotherTeam ?? []).length;
   const weekdays = countWeekdays(startDate, endDate);
-  const awayDays = absences.reduce(
+  // Part of a day is planned around, so only whole days are skipped.
+  const wholeAbsences = absences.filter(
+    (absence) => !isPartDayAbsence(absence),
+  );
+  const awayDays = wholeAbsences.reduce(
     (total, absence) => total + awayWeekdays(absence, startDate, endDate),
     0,
   );
+  const partDays = preview?.partDays ?? [];
 
   return (
     <PlanSummary
@@ -119,16 +129,29 @@ export const PeriodPreview = ({
         </p>
       )}
 
-      {absences.length > 0 && (
+      {wholeAbsences.length > 0 && (
         <p className="text-muted-foreground">
           Away {awayDays} {awayDays === 1 ? "day" : "days"}, skipped:{" "}
-          {[...absences]
+          {[...wholeAbsences]
             .sort((a, b) => a.startDate.localeCompare(b.startDate))
             .map(
               (absence) =>
                 `${ABSENCE_TYPE_LABELS[absence.type]} ${formatAbsenceRange(absence)}`,
             )
             .join(", ")}
+        </p>
+      )}
+
+      {partDays.length > 0 && (
+        <p className="text-muted-foreground">
+          Away part of{" "}
+          {partDays
+            .map(
+              ({ date, absenceMinutes }) =>
+                `${formatDayMonthLabel(date)} (${formatDuration(absenceMinutes)})`,
+            )
+            .join(", ")}
+          : planned only up to what is left.
         </p>
       )}
 

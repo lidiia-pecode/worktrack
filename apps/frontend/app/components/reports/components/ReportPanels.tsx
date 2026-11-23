@@ -15,7 +15,7 @@ import { HoursReportGroupBy } from "@/types/enums";
 import { useHoursReport } from "@/hooks/useHoursReport";
 import { usePeopleReport } from "@/hooks/usePeopleReport";
 import { cn } from "@/lib/utils/cn";
-import { formatReportHours } from "@/lib/utils/date";
+import { formatDuration, formatReportHours } from "@/lib/utils/date";
 import {
   hoursAgainst,
   partDaysLabel,
@@ -181,12 +181,12 @@ export const PersonFacts = ({
           mark: BILLABLE_MARK,
           value: `${formatReportHours(person.billableMinutes)} · ${percentOf(person.billableMinutes, person.loggedMinutes)}%`,
         },
-        ...(person.timeOffDays > 0
+        ...(person.timeOffDays > 0 || person.partDayAbsenceMinutes > 0
           ? [
               {
                 label: "Time off",
                 mark: TIME_OFF_MARK,
-                value: countLabel(person.timeOffDays, "day", "days"),
+                value: timeOffText(person),
               },
             ]
           : []),
@@ -450,3 +450,15 @@ export const ProjectPanel = ({
     </ReportPanel>
   );
 };
+
+/** Whole days off, with the hours of part-day absences beside them: "3 days · 2h 25m". */
+const timeOffText = ({
+  timeOffDays,
+  partDayAbsenceMinutes,
+}: Pick<PeopleReportRow, "timeOffDays" | "partDayAbsenceMinutes">) =>
+  [
+    timeOffDays > 0 && countLabel(timeOffDays, "day", "days"),
+    partDayAbsenceMinutes > 0 && formatDuration(partDayAbsenceMinutes),
+  ]
+    .filter(Boolean)
+    .join(" · ");

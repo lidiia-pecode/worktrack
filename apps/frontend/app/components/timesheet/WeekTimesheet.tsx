@@ -27,7 +27,7 @@ import { useAuth } from "@/hooks/auth/useAuth";
 import { UserRole } from "@/types/enums";
 import { useShownWeek } from "@/hooks/useShownWeek";
 import {
-  ABSENCE_TYPE_LABELS,
+  absenceDayText,
   mapAbsencesByDate,
   newAbsenceStartDate,
 } from "@/lib/utils/absence";
@@ -56,7 +56,7 @@ import {
 } from "./components/AbsenceFormModal";
 import { DayColumn } from "./components/DayColumn";
 import { WeekDayList } from "./components/WeekDayList";
-import { dayDrawingHeight } from "./helpers/build-segments";
+import { dayDrawingHeight, partAbsenceHeight } from "./helpers/build-segments";
 import { TimesheetDay } from "./helpers/day-state";
 import { TimeLogFormModal } from "./components/TimeLogFormModal";
 import { lastEntryChoiceKey } from "./helpers/last-entry-choice";
@@ -72,6 +72,8 @@ type ModalState = {
 type AbsenceModalState = {
   date: string;
   absence?: Absence;
+  /** Opened from a day: that day only, whole or in part. */
+  isSingleDay?: boolean;
 };
 
 const PX_PER_HOUR = 56;
@@ -242,9 +244,9 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
     .filter((date) => !isWeekend(date) && absencesByDate[toISODate(date)])
     .map(
       (date) =>
-        `${formatWeekdayLabel(date)} ${date.getDate()}, ${ABSENCE_TYPE_LABELS[
-          absencesByDate[toISODate(date)].type
-        ].toLowerCase()}`,
+        `${formatWeekdayLabel(date)} ${date.getDate()}, ${absenceDayText(
+          absencesByDate[toISODate(date)],
+        )}`,
     );
   const weekendMinutes = weekDates
     .filter(isWeekend)
@@ -260,6 +262,7 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
         (log) => log.minutes,
         expectedByDate[iso] ?? 0,
         PX_PER_MINUTE,
+        partAbsenceHeight(absencesByDate[iso], PX_PER_MINUTE),
       );
     }),
   );
@@ -324,6 +327,12 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
         isEditable,
       }),
     });
+
+  // From the day's own form: the day becomes an absence, whole or in part.
+  const openDayAbsence = (date: string) => {
+    setModalState(null);
+    setAbsenceModal({ date, isSingleDay: true });
+  };
 
   const openEdit = (timelog: TimeLog) => {
     setModalState({
@@ -408,6 +417,7 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
         onClose={closeAbsence}
         userId={userId}
         date={absenceModal.date}
+        isSingleDay={absenceModal.isSingleDay}
         absence={openedAbsence}
         isLocked={isLocked}
         onCreate={(payload) => absenceActions.create.mutateAsync(payload)}
@@ -572,6 +582,7 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
                 pixelsPerMinute={PX_PER_MINUTE}
                 onAddClick={openCreate}
                 onAbsenceClick={openAbsence}
+                onAddAbsenceClick={(date) => openDayAbsence(toISODate(date))}
                 onEntryClick={openEdit}
               />
             ))}
@@ -587,6 +598,7 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
             )}
             onAddClick={openCreate}
             onAbsenceClick={openAbsence}
+            onAddAbsenceClick={(date) => openDayAbsence(toISODate(date))}
             onEntryClick={openEdit}
           />
         </div>
@@ -619,6 +631,7 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
           onDelete={(id) => actions.delete.mutateAsync(id)}
           isSaving={actions.create.isPending || actions.update.isPending}
           isDeleting={actions.delete.isPending}
+          onAddAbsence={() => openDayAbsence(modalState.date)}
         />
       )}
     </>

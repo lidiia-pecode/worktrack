@@ -12,6 +12,8 @@ export interface Absence {
   type: AbsenceType;
   startDate: string;
   endDate: string;
+  /** Part of one day, in minutes; null for a whole day or days. */
+  minutes: number | null;
   note?: string | null;
   createdAt: string;
   updatedAt: string;
@@ -31,6 +33,8 @@ export interface AbsencePayload {
   type: AbsenceType;
   startDate: string;
   endDate: string;
+  /** Part of one day; null makes it a whole day on update. */
+  minutes?: number | null;
   /** null clears a saved note on update. */
   note?: string | null;
 }
@@ -52,3 +56,16 @@ export interface AbsencesQuery extends PaginationParams {
 }
 
 export type AbsenceListResponse = PaginatedResponse<Absence>;
+
+/** Mirrors the backend `AbsenceDay`: a person's day, for part of it to be measured against. */
+export interface AbsenceDay {
+  date: string;
+  workingMinutes: number;
+  loggedMinutes: number;
+  plannedMinutes: number;
+}
+
+export interface AbsenceDayQuery {
+  date: string;
+  userId?: string;
+}

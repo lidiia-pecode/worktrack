@@ -796,6 +796,26 @@ describe('AbsencesService', () => {
       );
     });
 
+    it("gives who records it the day's working, logged and planned time", async () => {
+      await existingTimeLog(member.id, START, 330);
+      await planBy(manager.id, member.id, START);
+
+      await expect(
+        service.dayFor({ userId: member.id, date: START }, manager),
+      ).resolves.toEqual({
+        date: START,
+        workingMinutes: 480,
+        loggedMinutes: 330,
+        plannedMinutes: 240,
+      });
+      await expect(
+        service.dayFor({ date: '2026-02-14' }, member),
+      ).resolves.toMatchObject({ workingMinutes: 0 });
+      await expect(
+        service.dayFor({ userId: outsider.id, date: START }, manager),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
     it('is backed by the database: minutes only on one day', async () => {
       await expect(
         dataSource.getRepository(Absence).insert({

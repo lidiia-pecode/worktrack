@@ -36,9 +36,17 @@ import {
   AbsencePayload,
   UpdateAbsencePayload,
 } from './dtos/absence-payload.dto';
-import { AbsencesQuery } from './dtos/absences-query.dto';
+import { AbsenceDayQuery, AbsencesQuery } from './dtos/absences-query.dto';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 import { pageOffset } from 'src/lib/dtos/pagination-query.dto';
+
+/** A person's day as the absence form measures part of it. */
+export interface AbsenceDay {
+  date: string;
+  workingMinutes: number;
+  loggedMinutes: number;
+  plannedMinutes: number;
+}
 
 /** A plan an absence removed, with who made it, for telling them. */
 interface RemovedPlan {
@@ -157,6 +165,40 @@ export class AbsencesService {
           (span.until === null || absence.startDate < span.until),
       );
     }
+  }
+
+  /**
+   * What a day holds for someone, for the absence form to measure part of it
+   * against: their working day, the time logged and the time planned. Read
+   * with the absence write scope, since only who records one needs it.
+   */
+  async dayFor(query: AbsenceDayQuery, user: AuthUser): Promise<AbsenceDay> {
+    const ownerId = query.userId ?? user.id;
+    const { date } = query;
+    await this.assertCanWriteFor(ownerId, user, { from: date, to: date });
+
+    const manager = this.dataSource.manager;
+    const [workingMinutes, loggedMinutes, plannedMinutes] = await Promise.all([
+      this.workingMinutesOn(user.companyId, ownerId, date),
+      this.sumMinutesOn(
+        manager,
+        'time_logs',
+        'minutes',
+        user.companyId,
+        ownerId,
+        date,
+      ),
+      this.sumMinutesOn(
+        manager,
+        'planning_entries',
+        'planned_minutes',
+        user.companyId,
+        ownerId,
+        date,
+      ),
+    ]);
+
+    return { date, workingMinutes, loggedMinutes, plannedMinutes };
   }
 
   // ==========================================
@@ -542,9 +584,8 @@ export class AbsencesService {
     date: string,
     minutes: number,
   ): Promise<void> {
-    const timeline = await this.capacity.timelineFor(companyId, userId, date);
-    const workingDay = Math.floor(timeline.minutesPerDayOn(date));
-    if (!isWorkingDay(date) || workingDay === 0) {
+    const workingDay = await this.workingMinutesOn(companyId, userId, date);
+    if (workingDay === 0) {
       throw new BadRequestException(
         `${formatDay(date)} has no working hours, so part of it can't be taken off.`,
       );
@@ -555,15 +596,14 @@ export class AbsencesService {
       );
     }
 
-    const logged = await manager
-      .createQueryBuilder()
-      .select('COALESCE(SUM(t.minutes), 0)', 'minutes')
-      .from('time_logs', 't')
-      .where('t.company_id = :companyId', { companyId })
-      .andWhere('t.user_id = :userId', { userId })
-      .andWhere('t.date = :date', { date })
-      .getRawOne<{ minutes: string }>();
-    const loggedMinutes = Number(logged?.minutes ?? 0);
+    const loggedMinutes = await this.sumMinutesOn(
+      manager,
+      'time_logs',
+      'minutes',
+      companyId,
+      userId,
+      date,
+    );
     const left = Math.max(0, workingDay - loggedMinutes);
 
     if (minutes > left) {
@@ -571,6 +611,37 @@ export class AbsencesService {
         `Only ${formatMinutes(left)} of ${formatDay(date)} is left: ${formatMinutes(loggedMinutes)} is already logged.`,
       );
     }
+  }
+
+  /** The person's working day on a date, in whole minutes; 0 on a weekend. */
+  private async workingMinutesOn(
+    companyId: string,
+    userId: string,
+    date: string,
+  ): Promise<number> {
+    if (!isWorkingDay(date)) return 0;
+    const timeline = await this.capacity.timelineFor(companyId, userId, date);
+    return Math.floor(timeline.minutesPerDayOn(date));
+  }
+
+  /** Time logged or planned for the person on a date, read straight from its table. */
+  private async sumMinutesOn(
+    manager: EntityManager,
+    table: 'time_logs' | 'planning_entries',
+    column: 'minutes' | 'planned_minutes',
+    companyId: string,
+    userId: string,
+    date: string,
+  ): Promise<number> {
+    const row = await manager
+      .createQueryBuilder()
+      .select(`COALESCE(SUM(r.${column}), 0)`, 'minutes')
+      .from(table, 'r')
+      .where('r.company_id = :companyId', { companyId })
+      .andWhere('r.user_id = :userId', { userId })
+      .andWhere('r.date = :date', { date })
+      .getRawOne<{ minutes: string }>();
+    return Number(row?.minutes ?? 0);
   }
 
   private async assertNoTimeLogged(

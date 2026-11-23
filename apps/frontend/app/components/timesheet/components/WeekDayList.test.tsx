@@ -48,6 +48,7 @@ const renderList = (days: TimesheetDay[]) => {
   const handlers = {
     onAddClick: vi.fn(),
     onAbsenceClick: vi.fn(),
+    onAddAbsenceClick: vi.fn(),
     onEntryClick: vi.fn(),
   };
   render(<WeekDayList days={days} todayIso="2026-10-16" {...handlers} />);
@@ -99,7 +100,9 @@ describe("WeekDayList", () => {
     renderList([day({ plannedEntries: [plan], canLogTime: false })]);
 
     expect(screen.getByText(/Beacon · planned/)).toBeInTheDocument();
-    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Log time/ }),
+    ).not.toBeInTheDocument();
   });
 
   it("opens a locked absence to read", async () => {

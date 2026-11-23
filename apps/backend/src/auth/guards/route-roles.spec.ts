@@ -23,6 +23,7 @@ const OWNER = [UserRole.OWNER];
 const ROUTE_ROLES: Record<string, Record<string, UserRole[]>> = {
   AbsencesController: {
     getAllAbsences: EVERY_ROLE,
+    getDay: EVERY_ROLE,
     createAbsence: EVERY_ROLE,
     updateAbsence: EVERY_ROLE,
     deleteAbsence: EVERY_ROLE,

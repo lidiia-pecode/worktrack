@@ -17,7 +17,7 @@ import {
   UpdateAbsencePayload,
 } from './dtos/absence-payload.dto';
 
-import { AbsencesQuery } from './dtos/absences-query.dto';
+import { AbsenceDayQuery, AbsencesQuery } from './dtos/absences-query.dto';
 
 import { Serialize, SerializeList } from 'src/lib/interceptors';
 import { CurrentUser } from 'src/lib/decorators';
@@ -34,6 +34,11 @@ export class AbsencesController {
     @CurrentUser() user: AuthUser,
   ) {
     return this.absencesService.list(query, user);
+  }
+
+  @Get('day')
+  async getDay(@Query() query: AbsenceDayQuery, @CurrentUser() user: AuthUser) {
+    return this.absencesService.dayFor(query, user);
   }
 
   @Post()

@@ -23,6 +23,12 @@ vi.mock("@/hooks/usePlanning", () => ({
   }),
 }));
 
+// A whole-day form never reads a day's hours.
+vi.mock("@/hooks/useAbsences", () => ({
+  useAbsenceDay: () => ({ data: undefined, isError: false, refetch: vi.fn() }),
+  useAbsencesMutations: vi.fn(),
+}));
+
 const plan = (id: string, projectName: string, minutes: number) =>
   ({
     id,

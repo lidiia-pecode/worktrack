@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import { CalendarOff } from "lucide-react";
 
 import { Absence, PlanningEntry, TeamSummaryRow, TimeLog } from "@/types";
-import { formatDuration, toISODate } from "@/lib/utils/date";
+import { formatDuration, isWeekend, toISODate } from "@/lib/utils/date";
 import { isRangeLocked } from "@/lib/utils/reporting-period";
 import {
   closedSpellOn,
@@ -48,7 +48,10 @@ type TeamWeekRowProps = {
   onEditEntry: (timelog: TimeLog) => void;
   onAdd: (date: Date, plannedProjectId?: string) => void;
   onAbsenceClick: (absence: Absence) => void;
+  /** Whole days for the person, from beside their name. */
   onAddAbsence: () => void;
+  /** One day still to come, whole or in part, from the day itself. */
+  onAddDayAbsence: (date: string) => void;
 };
 
 export const TeamWeekRow = ({
@@ -67,6 +70,7 @@ export const TeamWeekRow = ({
   onAdd,
   onAbsenceClick,
   onAddAbsence,
+  onAddDayAbsence,
 }: TeamWeekRowProps) => {
   const rowRef = useRef<HTMLTableRowElement>(null);
   const daysByDate = new Map(row.days.map((day) => [day.date, day]));
@@ -170,6 +174,11 @@ export const TeamWeekRow = ({
             isBusy={busyDate === iso}
             onEditEntry={canWriteDay ? onEditEntry : undefined}
             onAdd={canLogTime ? () => onAdd(date) : undefined}
+            onAddAbsence={
+              canWriteDay && iso > todayIso && !absence && !isWeekend(date)
+                ? () => onAddDayAbsence(iso)
+                : undefined
+            }
             onPlanClick={
               canLogTime ? (projectId) => onAdd(date, projectId) : undefined
             }

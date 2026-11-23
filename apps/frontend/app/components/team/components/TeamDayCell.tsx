@@ -1,11 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { Plus } from "lucide-react";
+import { CalendarOff, Plus } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Absence, PlanningEntry, TimeLog } from "@/types";
-import { ABSENCE_TYPE_SHORT_LABELS } from "@/lib/utils/absence";
+import {
+  ABSENCE_TYPE_SHORT_LABELS,
+  isPartDayAbsence,
+} from "@/lib/utils/absence";
 import { cn } from "@/lib/utils/cn";
 import {
   formatDuration,
@@ -14,6 +17,7 @@ import {
 } from "@/lib/utils/date";
 
 import { TimelogPopover } from "../../timesheet/components/TimelogPopover";
+import { ABSENCE_PATTERN } from "../../timesheet/consts";
 import { dayFill } from "../../timesheet/helpers/day-fill";
 import { EntryChip } from "../../shared/week/EntryChip";
 import { TimelogChip } from "./TimelogChip";
@@ -39,6 +43,8 @@ type TeamDayCellProps = {
   // Each action is offered only where it is allowed.
   onEditEntry?: (timelog: TimeLog) => void;
   onAdd?: () => void;
+  /** A working day still to come, taken off from the day itself. */
+  onAddAbsence?: () => void;
   onAbsenceClick?: () => void;
   onPlanClick?: (projectId: string) => void;
 };
@@ -56,6 +62,7 @@ export const TeamDayCell = ({
   isBusy = false,
   onEditEntry,
   onAdd,
+  onAddAbsence,
   onAbsenceClick,
   onPlanClick,
 }: TeamDayCellProps) => {
@@ -67,8 +74,12 @@ export const TeamDayCell = ({
 
   // A weekend's column is narrow, so its chips show the colour and hours.
   const isNarrow = isWeekend(date);
+  // Part of a day away leaves a working day, which takes time and plans.
+  const partAbsence =
+    absence && isPartDayAbsence(absence) ? absence : undefined;
+  const wholeAbsence = partAbsence ? undefined : absence;
   const fill = dayFill({
-    isAbsent: Boolean(absence),
+    isAbsent: Boolean(wholeAbsence),
     isWeekend: isNarrow,
     minutes,
     // A locked day reads as locked even past its figure; the row's total
@@ -76,9 +87,9 @@ export const TeamDayCell = ({
     expectedMinutes: isLocked ? undefined : expectedMinutes,
   });
   const isWithoutTime =
-    isPast && !absence && minutes === 0 && (expectedMinutes ?? 0) > 0;
+    isPast && !wholeAbsence && minutes === 0 && (expectedMinutes ?? 0) > 0;
   // Once any time is logged, the record replaces the plan.
-  const showsPlans = !absence && entries.length === 0 && plans.length > 0;
+  const showsPlans = !wholeAbsence && entries.length === 0 && plans.length > 0;
   const hiddenCount = entries.length - VISIBLE_ENTRIES;
   const shownEntries =
     isExpanded || hiddenCount <= 0
@@ -103,7 +114,7 @@ export const TeamDayCell = ({
       <div className="relative flex h-full min-h-11 flex-col">
         {/* The day's empty space logs time; its entries sit above it, each
             opening its own form, so no button holds another. */}
-        {onAdd && !absence && (
+        {onAdd && !wholeAbsence && (
           <button
             type="button"
             onClick={onAdd}
@@ -116,6 +127,20 @@ export const TeamDayCell = ({
             <Plus
               aria-hidden
               className="absolute right-1 bottom-0.5 size-3.5 text-brand opacity-0 transition-opacity group-hover:opacity-50 group-hover/add:opacity-100 group-focus-visible/add:opacity-100"
+            />
+          </button>
+        )}
+
+        {onAddAbsence && !absence && (
+          <button
+            type="button"
+            onClick={onAddAbsence}
+            aria-label={`Add an absence for ${personName} on ${dayLabel}`}
+            className="group/add absolute inset-0 cursor-pointer transition-colors hover:bg-hover focus-visible:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+          >
+            <CalendarOff
+              aria-hidden
+              className="absolute right-1 bottom-0.5 size-3.5 text-muted-foreground opacity-0 transition-opacity group-hover/add:opacity-100 group-focus-visible/add:opacity-100"
             />
           </button>
         )}
@@ -139,24 +164,28 @@ export const TeamDayCell = ({
             </span>
           )}
 
-          {absence &&
+          {partAbsence && (
+            <PartAbsenceChip absence={partAbsence} onClick={onAbsenceClick} />
+          )}
+
+          {wholeAbsence &&
             (onAbsenceClick ? (
               <button
                 type="button"
                 onClick={onAbsenceClick}
-                aria-label={`${ABSENCE_TYPE_SHORT_LABELS[absence.type]}, open the absence`}
+                aria-label={`${ABSENCE_TYPE_SHORT_LABELS[wholeAbsence.type]}, open the absence`}
                 className="my-auto self-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <Badge
                   variant="default"
                   className="cursor-pointer text-2xs transition-colors hover:bg-brand-muted"
                 >
-                  {ABSENCE_TYPE_SHORT_LABELS[absence.type]}
+                  {ABSENCE_TYPE_SHORT_LABELS[wholeAbsence.type]}
                 </Badge>
               </button>
             ) : (
               <Badge variant="default" className="my-auto self-center text-2xs">
-                {ABSENCE_TYPE_SHORT_LABELS[absence.type]}
+                {ABSENCE_TYPE_SHORT_LABELS[wholeAbsence.type]}
               </Badge>
             ))}
 
@@ -228,5 +257,42 @@ const PlanBlock = ({ plan, dayLabel, onClick }: PlanBlockProps) => {
           : `${plan.project.name}, planned ${duration}`
       }
     />
+  );
+};
+
+type PartAbsenceChipProps = {
+  absence: Absence & { minutes: number };
+  onClick?: () => void;
+};
+
+/** Part of a day away: a striped chip with its hours, above the day's entries. */
+const PartAbsenceChip = ({ absence, onClick }: PartAbsenceChipProps) => {
+  const label = ABSENCE_TYPE_SHORT_LABELS[absence.type];
+  const duration = formatDuration(absence.minutes);
+  const className = cn(
+    "flex h-6 w-full min-w-0 shrink-0 items-center gap-1.5 rounded-md px-2 text-left text-xs leading-none text-foreground ring-1 ring-foreground/5",
+    ABSENCE_PATTERN,
+  );
+  const content = (
+    <>
+      <span className="shrink-0 font-semibold">{duration}</span>
+      <span className="min-w-0 truncate">{label}</span>
+    </>
+  );
+
+  if (!onClick) return <span className={className}>{content}</span>;
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={`${label}, ${duration}, open the absence`}
+      className={cn(
+        className,
+        "cursor-pointer transition-[box-shadow] hover:ring-foreground/15 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring",
+      )}
+    >
+      {content}
+    </button>
   );
 };
