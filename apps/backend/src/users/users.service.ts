@@ -668,13 +668,11 @@ export class UsersService {
       const user = await this.getUserById(id, companyId, man);
 
       if (user.role === UserRole.OWNER) {
-        throw new ForbiddenException(
-          'Company OWNER account cannot be archived',
-        );
+        throw new ForbiddenException("The company owner can't be deactivated");
       }
 
       if (user.status === UserStatus.DEACTIVATED) {
-        throw new BadRequestException('User is already archived');
+        throw new BadRequestException('This person is already deactivated');
       }
 
       await this.assertLastWorkingDay(man, user, lastWorkingDay);

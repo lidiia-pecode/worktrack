@@ -18,18 +18,31 @@ import { PasswordInput } from "../../shared/inputs/PasswordInput";
 import { useSecurity } from "@/hooks/useSecurity";
 import { useAuth } from "@/hooks/auth/useAuth";
 import { useReportDirty } from "@/hooks/useReportDirty";
+import { User } from "@/types";
 import { GOOGLE_LINK_URL } from "@/lib/constants";
 
+export type SignInMethods = Pick<
+  User,
+  "email" | "hasPassword" | "googleLinked"
+>;
+
 interface SecuritySettingsProps {
+  /**
+   * From the server, for the first render: the browser's own copy of the
+   * person arrives later, and the wrong variant would show until then.
+   */
+  signIn: SignInMethods;
   onDirtyChange?: (isDirty: boolean) => void;
 }
 
-export const SecuritySettings = ({ onDirtyChange }: SecuritySettingsProps) => {
+export const SecuritySettings = ({
+  signIn,
+  onDirtyChange,
+}: SecuritySettingsProps) => {
   const { user } = useAuth();
   const { actions } = useSecurity();
 
-  const hasPassword = user?.hasPassword;
-  const isGoogleLinked = user?.googleLinked;
+  const { email, hasPassword, googleLinked: isGoogleLinked } = user ?? signIn;
 
   const handleGoogleLink = () => {
     window.location.href = GOOGLE_LINK_URL;
@@ -91,7 +104,7 @@ export const SecuritySettings = ({ onDirtyChange }: SecuritySettingsProps) => {
 
                 <p className="mt-1 text-sm text-muted-foreground">
                   {isGoogleLinked
-                    ? `You can sign in with the Google account for ${user?.email}.`
+                    ? `You can sign in with the Google account for ${email}.`
                     : "Use your Google account to sign in."}
                 </p>
               </div>
@@ -130,7 +143,7 @@ export const SecuritySettings = ({ onDirtyChange }: SecuritySettingsProps) => {
           <input
             type="email"
             autoComplete="username"
-            value={user?.email ?? ""}
+            value={email}
             readOnly
             hidden
           />

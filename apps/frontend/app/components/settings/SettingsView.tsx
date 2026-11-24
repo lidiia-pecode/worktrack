@@ -10,11 +10,20 @@ import { DiscardChangesModal } from "@/app/components/shared/DiscardChangesModal
 
 import { SettingsSidebar } from "./SettingsSidebar";
 import { ProfileSettings } from "./profile/ProfileSettings";
-import { SecuritySettings } from "./security/SecuritySettings";
+import {
+  SecuritySettings,
+  type SignInMethods,
+} from "./security/SecuritySettings";
 import { CompanySettings } from "./company/CompanySettings";
 import { resolveSettingsTab, type SettingsTab } from "./settings-tabs";
 
-export const SettingsView = ({ isOwner }: { isOwner: boolean }) => {
+type SettingsViewProps = {
+  isOwner: boolean;
+  /** How the person signs in, as the server knows it before the page loads. */
+  signIn: SignInMethods;
+};
+
+export const SettingsView = ({ isOwner, signIn }: SettingsViewProps) => {
   const { user } = useAuth();
 
   const searchParams = useSearchParams();
@@ -65,7 +74,10 @@ export const SettingsView = ({ isOwner }: { isOwner: boolean }) => {
           )}
 
           {activeTab === "security" && (
-            <SecuritySettings onDirtyChange={setHasUnsavedChanges} />
+            <SecuritySettings
+              signIn={signIn}
+              onDirtyChange={setHasUnsavedChanges}
+            />
           )}
 
           {activeTab === "company" && isOwner && (

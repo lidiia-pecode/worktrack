@@ -293,7 +293,8 @@ Company  (tenant root — everything below carries companyId)
 │
 ├── TimeLog         user + projectActivity + date + minutes + isBillable
 │                   createdBy + updatedBy (who added it, who last changed it)
-├── PlanningEntry   user + project + date + plannedMinutes + createdBy
+├── PlanningEntry   user + project + date + plannedMinutes +
+│                   createdBy + updatedBy (who made it, who last changed it)
 └── ReportingPeriod month + status (OPEN | LOCKED) + changedBy
                     only for months an owner has reopened
 ```
@@ -371,12 +372,16 @@ Every write passes five checks, in this order (`time-logs.service.ts`):
    on its day (D9), through `assertCanWriteUser`: an owner for anyone in the
    company, a manager for the people in the teams they lead on the days they
    were in them, an employee for themselves. Moving an entry to another day
-   needs both days.
+   needs both days. An entry outside the caller's reach is not found (404)
+   when they try to change or delete it, as when they read it, so its id
+   tells them nothing; absences answer the same way.
    The entry is always matched on `companyId` too. The rest runs in one
    transaction, after the owner's user row is locked.
 2. **Period lock** — a write touching a `LOCKED` period is rejected (403). On
    update, both the old and the new date are checked, so an entry cannot be
-   moved into or out of a locked period.
+   moved into or out of a locked period. Every write that a locked month
+   refuses — time, absences, plans, working hours, a deactivation, a team
+   change — names the month and says the owner can reopen it in Periods.
 3. **No future date** — a time entry records work done (D6), so one dated
    after the company's today is rejected (400), for every role, on create and
    on update. An entry already in the future can be moved back or deleted.
@@ -387,7 +392,7 @@ Every write passes five checks, in this order (`time-logs.service.ts`):
    date (`assertEmployedOn`). The last working day itself stays open.
 5. **Project activity and membership** — the `ProjectActivity` must belong to
    the caller's company (404); the owner must be on its project, a
-   `project_users` row for `(projectId, userId)` (403), so a valid
+   `project_users` row for `(projectId, userId)` (400), so a valid
    `projectActivityId` for a project the owner is not assigned to is refused;
    and it must be active, on an ACTIVE project with an ACTIVE activity (400).
 
@@ -848,8 +853,8 @@ the team and project panels say "Last day" and the date after their position.
 | Hours export, timeline | whole company | own, plus users in teams they manage | — |
 
 This matrix is what the code does today. Why it is shaped this way —
-Owner-owned structure, manager-operated teams — and the open permission
-questions are in [`permission-model.md`](./permission-model.md).
+Owner-owned structure, manager-operated teams — is in
+[`permission-model.md`](./permission-model.md).
 
 **Manager scope comes from team leadership, not from the role.** A MANAGER who
 leads no team sees nobody else, and under D9 may therefore edit nobody's time but
@@ -1170,8 +1175,8 @@ see, and how a new company gets started.
   absence that runs into a locked month keeps its days there and its reason
   and note; its open days can still move, and deleting it removes only
   those. An absence deletes the plans on its days whoever made them, and
-  tells their author in-app, within what the author can see and without its
-  type. The absence form waits until it knows which plans it removes. Time
+  tells whoever changed each plan last, or its author when nobody did,
+  in-app, within what that person can see and without its type. The absence form waits until it knows which plans it removes. Time
   and absences may still be recorded on days before someone's account was
   created; Planning closes those days, as the save refuses plans there. A
   manager sees the month-end deadline as an amber lock on Team time and
@@ -1267,18 +1272,18 @@ in cookies, never in a response.
 ### Engineering state
 
 This is the one place that counts the tests. Backend coverage is fifty-one
-suites and 1048 tests, covering the roles of every route and the whole app over
+suites and 1056 tests, covering the roles of every route and the whole app over
 HTTP (every route refused signed out but the public ones), the role-visibility filters and reach by team
 membership dates (a team keeping its history after a move), team and invitation
 rules, the Google callbacks and notifications, time-log, absence, capacity and
-planning rules, a month of plans read with a week's rows, an absence across a locked month and the notice to whoever made the plans it removes, who added and changed a time entry or an absence, the lock
+planning rules, a month of plans read with a week's rows, an absence across a locked month and the notice to whoever last changed the plans it removes, who added and changed a time entry or an absence, the lock
 order between plan saves and project changes, monthly locking in and outside UTC and a Close that waits for
 an open write, the reports and the export (weeks or months on the timeline,
 one team, the export's file name), page and date-range limits, name
 checks, the order of people and projects by name, the seed's local-only guard, the Neon migration risk check, and
 session refresh, a sign-in racing a deactivation, rate limits and token clean-up — most against a real
 database.
-The frontend has seventy-nine Vitest files and 464 tests: its date, month,
+The frontend has eighty-one Vitest files and 479 tests: its date, month,
 absence, lock, paging and time zone helpers, the report range check, the
 period Reports shows (in the address, stepped and switched between units),
 the chart's labels and start, decimal hours, a day's fill at 0h, a team's
@@ -1303,7 +1308,8 @@ real-user rollout planned in the near future.
 
 Access tokens live fifteen minutes and refresh tokens thirty days. A page holds
 at most 100 rows and a larger request is refused; views that need a whole list
-fetch it page by page. Reports and date-range figures cover at most 366 days.
+fetch it page by page. Reports and date-range figures cover at most 366 days. A date is accepted
+from 2000 to 2100, and input the database can't hold is refused (400).
 
 ---
 
