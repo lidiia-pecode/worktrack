@@ -10,7 +10,7 @@ import {
 import {
   ABSENCE_TYPE_LABELS,
   formatAbsenceRange,
-  isPartDayAbsence,
+  isWholeDayAbsence,
 } from "@/lib/utils/absence";
 
 import { DayShare, problemSummary } from "./period-lines";
@@ -80,9 +80,7 @@ export const PeriodPreview = ({
   const inAnotherTeam = (preview?.daysInAnotherTeam ?? []).length;
   const weekdays = countWeekdays(startDate, endDate);
   // Part of a day is planned around, so only whole days are skipped.
-  const wholeAbsences = absences.filter(
-    (absence) => !isPartDayAbsence(absence),
-  );
+  const wholeAbsences = absences.filter(isWholeDayAbsence);
   const awayDays = wholeAbsences.reduce(
     (total, absence) => total + awayWeekdays(absence, startDate, endDate),
     0,

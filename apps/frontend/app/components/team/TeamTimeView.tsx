@@ -53,7 +53,7 @@ import { BackToThisWeekButton, WeekNav } from "../shared/week/WeekNav";
 import { OnlyViewerNotice } from "../shared/week/OnlyViewerNotice";
 import { onlyViewerReason } from "../shared/week/only-viewer";
 import { NonWorkDayConfirm } from "../shared/week/NonWorkDayConfirm";
-import { PersonAbsenceModal } from "../timesheet/components/AbsenceFormModal";
+import { PersonAbsenceModal } from "../timesheet/components/PersonAbsenceModal";
 import { TimeLogFormModal } from "../timesheet/components/TimeLogFormModal";
 import { lastEntryChoiceKey } from "../timesheet/helpers/last-entry-choice";
 import { managerWelcomeKey } from "./components/ManagerWelcome";
@@ -614,6 +614,7 @@ export const TeamTimeView = ({
             timelogActions.create.isPending || timelogActions.update.isPending
           }
           isDeleting={timelogActions.delete.isPending}
+          hasAbsence={!!absencesByUser[entryForm.user.id]?.[entryForm.date]}
           onAddAbsence={() => {
             setEntryForm(null);
             setAbsenceForm({

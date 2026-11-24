@@ -50,10 +50,8 @@ import { BackToThisWeekButton, WeekNav } from "../shared/week/WeekNav";
 import { WeekHeaderDay } from "../shared/week/WeekHeaderDay";
 import { NonWorkDayConfirm } from "../shared/week/NonWorkDayConfirm";
 import { Button, buttonVariants } from "@/components/ui/button";
-import {
-  AbsenceFormModal,
-  LockedAbsenceModal,
-} from "./components/AbsenceFormModal";
+import { AbsenceFormModal } from "./components/AbsenceFormModal";
+import { LockedAbsenceModal } from "./components/LockedAbsenceModal";
 import { DayColumn } from "./components/DayColumn";
 import { WeekDayList } from "./components/WeekDayList";
 import { dayDrawingHeight, partAbsenceHeight } from "./helpers/build-segments";
@@ -637,6 +635,7 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
           isSaving={actions.create.isPending || actions.update.isPending}
           isDeleting={actions.delete.isPending}
           onAddAbsence={() => openDayAbsence(modalState.date)}
+          hasAbsence={!!absencesByDate[modalState.date]}
         />
       )}
     </>

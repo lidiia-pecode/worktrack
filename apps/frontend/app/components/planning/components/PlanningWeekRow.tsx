@@ -9,6 +9,7 @@ import {
   ABSENCE_TYPE_SHORT_LABELS,
   formatAbsenceRange,
   isPartDayAbsence,
+  isWholeDayAbsence,
 } from "@/lib/utils/absence";
 import { CLOSED_DAY_TEXT, closedSpellOn, fullName } from "@/lib/utils/user";
 import { cn } from "@/lib/utils/cn";
@@ -187,9 +188,7 @@ export const PlanningWeekRow = ({
             dates.map((date) => {
               const absence = absencesByDate[date];
               // Part of a day opens from its striped day instead.
-              return absence && !isPartDayAbsence(absence)
-                ? absence
-                : undefined;
+              return isWholeDayAbsence(absence) ? absence : undefined;
             }),
           ).map((run) => (
             <button

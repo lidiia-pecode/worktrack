@@ -59,7 +59,7 @@ import { StepArrows } from "../shared/buttons/StepArrows";
 import { SegmentedControl } from "../shared/SegmentedControl";
 import { TeamFilters } from "../team/components/TeamFilters";
 import { useTeamTimeFilters } from "../team/useTeamTimeFilters";
-import { PersonAbsenceModal } from "../timesheet/components/AbsenceFormModal";
+import { PersonAbsenceModal } from "../timesheet/components/PersonAbsenceModal";
 import { PlanPeriodModal } from "./components/PlanPeriodModal";
 import { PlanningWeekRow } from "./components/PlanningWeekRow";
 import { PlanningMonthRow } from "./components/PlanningMonthRow";

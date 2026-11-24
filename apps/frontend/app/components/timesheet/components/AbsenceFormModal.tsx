@@ -1,29 +1,20 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm, useWatch, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { CalendarPlus, Info, Lock, Trash2, X } from "lucide-react";
 import TextareaAutosize from "react-textarea-autosize";
 
-import {
-  Absence,
-  AbsenceDay,
-  AbsencePayload,
-  UpdateAbsencePayload,
-  User,
-} from "@/types";
+import { Absence, AbsencePayload, UpdateAbsencePayload } from "@/types";
 import { AbsenceType } from "@/types/enums";
 import {
   ABSENCE_TYPE_LABELS,
   MAX_ABSENCE_DAYS,
-  formatAbsenceRange,
-  isPartDayAbsence,
   projectHoursText,
 } from "@/lib/utils/absence";
 import {
-  formatDayRangeLabel,
   formatDuration,
   formatLongDayLabel,
   fromISODate,
@@ -31,22 +22,9 @@ import {
   formatDateRangeLabel,
   shiftISODate,
   firstOfMonth,
-  isWeekend,
   toISODate,
 } from "@/lib/utils/date";
-import {
-  AbsenceLockedPart,
-  absenceLockedPart,
-  isAbsenceFrozen,
-} from "@/lib/utils/reporting-period";
-import { fullName } from "@/lib/utils/user";
-import {
-  useAbsenceDay,
-  useAbsencesMutations,
-  useAllAbsencesQuery,
-} from "@/hooks/useAbsences";
-import { useAllTimeLogsQuery } from "@/hooks/useTimelogs";
-import { useLockedDates } from "@/hooks/useReportingPeriods";
+import { absenceLockedPart } from "@/lib/utils/reporting-period";
 import { usePlanningEntries } from "@/hooks/usePlanning";
 import { Button } from "@/components/ui/button";
 import {
@@ -64,28 +42,37 @@ import { FormSelect } from "../../shared/FormSelect";
 import { DatePicker } from "../../shared/inputs";
 import { ResourceFormModal } from "../../shared/resource/ResourceFormModal";
 import { PartLoadError } from "../../shared/PartLoadError";
+import {
+  UNAVAILABLE_DAYS_HINT,
+  changeableDays,
+  firstFreeWorkingDay,
+  firstUnavailableAfter,
+  firstUnavailableIn,
+  latestLastDayFrom,
+  unavailableDayError,
+  unavailableDaysWindow,
+} from "./absence-form-rules";
+import {
+  DAY_CHECK_ERROR,
+  LOCKED_RECORD_NOTE,
+  PLANS_CHECK_ERROR,
+  deletedAbsenceText,
+  filledDayText,
+  lockedDaysText,
+  plannedAgainstLeftText,
+  removedOpenDaysText,
+} from "./absence-form-texts";
 import { ChangedByNote } from "./ChangedByNote";
-
-const PLANS_CHECK_ERROR =
-  "Plans on these days couldn't load, so the absence can't be saved yet.";
-
-const DAY_CHECK_ERROR =
-  "This day's hours couldn't load, so part of it can't be saved yet.";
+import { useAbsenceDayPart } from "./useAbsenceDayPart";
+import { useUnavailableDays } from "./useUnavailableDays";
 
 const FORM_ID = "absence-form";
-
-/** What a part of a day leaves for the plans already on it, which stay. */
-const plannedAgainstLeftText = (planned: number, leftAfter: number) =>
-  planned > leftAfter
-    ? `${formatDuration(planned)} planned on this day, ${formatDuration(leftAfter)} left after the absence. The plans stay, and Planning shows the week as over.`
-    : `${formatDuration(planned)} planned on this day, ${formatDuration(leftAfter)} left after the absence.`;
 
 const absenceSchema = z
   .object({
     type: z.nativeEnum(AbsenceType, { message: "Pick a reason" }),
     startDate: z.string().min(1, "Pick a first day"),
     endDate: z.string().min(1, "Pick a last day"),
-    /** How much of one day: all of it, what logging left, or hours set. */
     length: z.enum(["whole", "rest", "hours"]),
     partHours: z.number(),
     partMinutes: z.number(),
@@ -112,160 +99,6 @@ const TYPE_OPTIONS = Object.values(AbsenceType).map((type) => ({
   label: ABSENCE_TYPE_LABELS[type],
 }));
 
-type Length = AbsenceFormData["length"];
-
-/** A day's working, logged and part-away minutes, as the server checks them. */
-const partDayError = ({
-  minutes,
-  workingMinutes,
-  loggedMinutes,
-  isMeasuredAgainstLogged,
-}: {
-  minutes: number;
-  workingMinutes: number;
-  loggedMinutes: number;
-  isMeasuredAgainstLogged: boolean;
-}) => {
-  const left = Math.max(0, workingMinutes - loggedMinutes);
-  if (workingMinutes === 0) return "This day has no working hours.";
-  if (minutes === 0) return "Enter the hours away";
-  if (minutes >= workingMinutes) {
-    return `Part of a day is shorter than the ${formatDuration(workingMinutes)} working day. Choose Whole day instead.`;
-  }
-  if (isMeasuredAgainstLogged && minutes > left) {
-    return `Only ${formatDuration(left)} of this day is left: ${formatDuration(loggedMinutes)} is already logged.`;
-  }
-  return undefined;
-};
-
-const UNAVAILABLE_DAYS_HINT =
-  "Days with time logged, another absence or in a locked month can't be chosen.";
-
-/**
- * The days a whole-day absence can't take, as the server refuses them: time
- * logged, another of the person's absences, a locked month. Read for the
- * days the pickers show and the chosen ones.
- */
-const useUnavailableDays = ({
-  userId,
-  absenceId,
-  from,
-  to,
-  enabled,
-}: {
-  userId: string;
-  /** The absence being edited, whose own days stay free. */
-  absenceId?: string;
-  from: string;
-  to: string;
-  enabled: boolean;
-}) => {
-  // The months these days are in, which can be outside the page's own.
-  const locks = useLockedDates(from, to);
-  const range = { userId, dateFrom: from, dateTo: to };
-  const logs = useAllTimeLogsQuery(range, { enabled });
-  const others = useAllAbsencesQuery(range, { enabled });
-  const { isLocked } = locks;
-  const timelogs = logs.items;
-  const absences = others.items;
-  // Read for these very days: not loading, failed, or kept from other days.
-  const isKnown =
-    !locks.isLoading &&
-    !locks.isError &&
-    [logs, others].every(
-      (list) => !list.isLoading && !list.isError && !list.isPlaceholderData,
-    );
-
-  const takenDays = useMemo(() => {
-    const days = new Set(timelogs.map((log) => log.date));
-    absences
-      .filter((other) => other.id !== absenceId)
-      .forEach((other) => {
-        for (
-          let day = other.startDate;
-          day <= other.endDate;
-          day = shiftISODate(day, 1)
-        ) {
-          days.add(day);
-        }
-      });
-    return days;
-  }, [timelogs, absences, absenceId]);
-
-  const isUnavailable = useCallback(
-    (date: string) => isLocked(date) || takenDays.has(date),
-    [isLocked, takenDays],
-  );
-
-  return { isUnavailable, isKnown: enabled && isKnown };
-};
-
-/** The first working day from `from` to `until` an absence can take. */
-const firstFreeWorkingDay = (
-  from: string,
-  until: string,
-  isUnavailable: (date: string) => boolean,
-) => {
-  for (let day = from; day <= until; day = shiftISODate(day, 1)) {
-    if (!isWeekend(fromISODate(day)) && !isUnavailable(day)) return day;
-  }
-  return undefined;
-};
-
-/** The first unavailable day after `from`, up to `until`, if there is one. */
-const firstUnavailableAfter = (
-  from: string,
-  until: string,
-  isUnavailable: (date: string) => boolean,
-) => {
-  for (
-    let day = shiftISODate(from, 1);
-    day <= until;
-    day = shiftISODate(day, 1)
-  ) {
-    if (isUnavailable(day)) return day;
-  }
-  return undefined;
-};
-
-/** Why a day that logged time fills takes no new absence. */
-const filledDayText = ({ workingMinutes, loggedMinutes }: AbsenceDay) =>
-  workingMinutes === 0
-    ? `${formatDuration(loggedMinutes)} is logged on this day, which has no working hours, so it can't be taken off.`
-    : `${formatDuration(loggedMinutes)} is logged on this day, so none of it is left to take off. Remove some of that time first.`;
-
-const deletedAbsenceText = (absence: Absence) => {
-  if (isPartDayAbsence(absence)) {
-    return `${ABSENCE_TYPE_LABELS[absence.type]} on ${formatAbsenceRange(absence)} will be deleted, and that day's hours are expected again. This can't be undone.`;
-  }
-  const daysBecome =
-    absence.startDate === absence.endDate
-      ? "that day becomes a working day"
-      : "those days become working days";
-
-  return `${ABSENCE_TYPE_LABELS[absence.type]} on ${formatAbsenceRange(absence)} will be deleted, and ${daysBecome} again. This can't be undone.`;
-};
-
-/** The open days a delete removes from an absence partly in a locked month. */
-const removedOpenDaysText = (absence: Absence, locked: AbsenceLockedPart) => {
-  const removed = [
-    locked.startOpen &&
-      formatDayRangeLabel(absence.startDate, shiftISODate(locked.from, -1)),
-    locked.endOpen &&
-      formatDayRangeLabel(shiftISODate(locked.to, 1), absence.endDate),
-  ].filter(Boolean);
-
-  return `${removed.join(" and ")} will be removed from this absence. ${lockedDaysText(locked)} This can't be undone.`;
-};
-
-const lockedDaysText = ({ from, to }: AbsenceLockedPart) =>
-  from === to
-    ? `${formatDayRangeLabel(from, to)} stays as it is: it's in a locked month.`
-    : `${formatDayRangeLabel(from, to)} stay as they are: they're in a locked month.`;
-
-/** Under the locked days in the form: why its reason and note can't change. */
-const LOCKED_RECORD_NOTE = "Its reason and note stay as they are too.";
-
 type Props = {
   open: boolean;
   onClose: () => void;
@@ -273,9 +106,8 @@ type Props = {
   userId: string;
   /** Named under the title when the form is for someone else. */
   subjectName?: string;
-  /** The first day a new absence starts on, and its last unless `endDate` says. */
+  /** The day a new absence starts on, and ends on until more are chosen. */
   date: string;
-  endDate?: string;
   /**
    * Opened from a day: that day is fixed and named, and part of it can be
    * taken. An absence of one day opens the same way; otherwise the form takes
@@ -298,7 +130,6 @@ export const AbsenceFormModal = ({
   userId,
   subjectName,
   date,
-  endDate: lastDate = date,
   isSingleDay = false,
   absence,
   isLocked,
@@ -317,13 +148,13 @@ export const AbsenceFormModal = ({
     () => ({
       type: absence?.type ?? AbsenceType.VACATION,
       startDate: absence?.startDate ?? date,
-      endDate: absence?.endDate ?? lastDate,
+      endDate: absence?.endDate ?? date,
       length: absence?.minutes != null ? "hours" : "whole",
       partHours: Math.floor((absence?.minutes ?? 0) / 60),
       partMinutes: (absence?.minutes ?? 0) % 60,
       note: absence?.note ?? "",
     }),
-    [absence, date, lastDate],
+    [absence, date],
   );
 
   const {
@@ -339,7 +170,8 @@ export const AbsenceFormModal = ({
     defaultValues,
   });
 
-  // A new range moves once, as it opens, off a day it can't take.
+  // A new range moves once, as it opens, off a day it can't take; never once
+  // a day was picked in the form.
   const hasLookedForFreeDay = useRef(false);
 
   useEffect(() => {
@@ -367,95 +199,52 @@ export const AbsenceFormModal = ({
     isAboutOneDay && !lockedPart && !addsDays && startDate === endDate;
 
   const {
-    data: day,
-    isError: dayFailed,
-    refetch: refetchDay,
-  } = useAbsenceDay(
-    { date: startDate, userId },
-    open && offersPart && !!startDate,
-  );
-  const leftOfDay = day
-    ? Math.max(0, day.workingMinutes - day.loggedMinutes)
-    : 0;
-  // "Rest of the day" is what logging left, so it is offered once time is
-  // logged and something of the day is left.
-  const offersRest =
-    !!day &&
-    day.loggedMinutes > 0 &&
-    leftOfDay > 0 &&
-    leftOfDay < day.workingMinutes;
-  // A day with time logged can't be away whole, as the server refuses it.
-  const canBeWhole = !day || day.loggedMinutes === 0;
-  const partLength: Length = offersRest ? "rest" : "hours";
-  const length: Length = !offersPart
-    ? "whole"
-    : (chosenLength === "whole" && !canBeWhole) ||
-        (chosenLength === "rest" && !offersRest)
-      ? partLength
-      : chosenLength;
-  const isPart = length !== "whole";
-  // Until the day is read, the form doesn't know whether it can be away whole.
-  const isDayPending = offersPart && !day && !dayFailed;
-  // A new absence on a day that time already fills has nothing to take.
-  const filledDay =
-    offersPart && !absence && !!day && day.loggedMinutes > 0 && leftOfDay === 0
-      ? day
-      : null;
-  const partTotal =
-    length === "rest" ? leftOfDay : partHours * 60 + partMinutes;
-  const lengthOptions: { value: Length; label: string }[] = [
-    ...(canBeWhole ? [{ value: "whole" as const, label: "Whole day" }] : []),
-    ...(offersRest
-      ? [
-          {
-            value: "rest" as const,
-            label: `Rest of the day · ${formatDuration(leftOfDay)}`,
-          },
-        ]
-      : []),
-    { value: "hours", label: "Set hours" },
-  ];
-  const partError =
-    isPart && day
-      ? partDayError({
-          minutes: partTotal,
-          workingMinutes: day.workingMinutes,
-          loggedMinutes: day.loggedMinutes,
-          // As on the server: only a new day or more hours are measured again.
-          isMeasuredAgainstLogged:
-            !absence ||
-            startDate !== absence.startDate ||
-            absence.minutes === null ||
-            partTotal > absence.minutes,
-        })
-      : undefined;
+    day,
+    dayFailed,
+    refetchDay,
+    length,
+    isPart,
+    partTotal,
+    partError,
+    lengthOptions,
+    isDayPending,
+    filledDay,
+  } = useAbsenceDayPart({
+    userId,
+    date: startDate,
+    absence,
+    offersPart: open && offersPart,
+    chosenLength,
+    setMinutes: partHours * 60 + partMinutes,
+  });
   // "Enter the hours" waits for a save; a limit shows as the hours change.
   const shownPartError =
     partError && (triedSaving || partTotal > 0) ? partError : undefined;
 
   // Whole days are picked around the ones the server would refuse.
-  const picksDays = !lockedPart && !isPart && (!opensOnDay || addsDays);
-  // The month on show with the grid's days around it, and the chosen days.
-  const daysFrom = [shiftISODate(shownMonth, -7), startDate].sort()[0];
-  const daysTo = [
-    shiftISODate(toISODate(firstOfMonth(fromISODate(shownMonth), 1)), 14),
-    toISODate(firstOfMonth(fromISODate(endDate), 1)),
-  ].sort()[1];
+  const picksDays = !isPart && (!opensOnDay || addsDays);
+  const daysWindow = unavailableDaysWindow(shownMonth, startDate, endDate);
   const { isUnavailable, isKnown: areDaysKnown } = useUnavailableDays({
     userId,
     absenceId: absence?.id,
-    from: daysFrom,
-    to: daysTo,
+    ...daysWindow,
     enabled: open && picksDays && isISODateRange(startDate, endDate),
   });
-  const lastDayLimit = shiftISODate(startDate, MAX_ABSENCE_DAYS - 1);
   // The last day can't reach past a day the absence can't take.
-  const firstBlocked = picksDays
-    ? firstUnavailableAfter(startDate, lastDayLimit, isUnavailable)
-    : undefined;
-  const latestLastDay = firstBlocked
-    ? shiftISODate(firstBlocked, -1)
-    : lastDayLimit;
+  const latestLastDay = latestLastDayFrom(
+    startDate,
+    picksDays ? isUnavailable : () => false,
+  );
+  // The pickers keep such a day out of reach, but days chosen while they
+  // were still loading may hold one, which the server would refuse.
+  const blockedDay =
+    picksDays && areDaysKnown
+      ? firstUnavailableIn(
+          changeableDays(startDate, endDate, lockedPart),
+          isUnavailable,
+        )
+      : undefined;
+  const daysError = blockedDay ? unavailableDayError(blockedDay) : undefined;
 
   const isRangeComplete = isISODateRange(startDate, endDate);
   const {
@@ -510,6 +299,7 @@ export const AbsenceFormModal = ({
   // A first day past the last, or one with a day it can't take before the
   // last, takes the last day with it.
   const setFirstDay = (first: string) => {
+    hasLookedForFreeDay.current = true;
     setValue("startDate", first, { shouldDirty: true, shouldValidate: true });
     const blocked = firstUnavailableAfter(first, endDate, isUnavailable);
     if (endDate < first || blocked) {
@@ -517,8 +307,10 @@ export const AbsenceFormModal = ({
     }
   };
 
-  const setLastDay = (last: string) =>
+  const setLastDay = (last: string) => {
+    hasLookedForFreeDay.current = true;
     setValue("endDate", last, { shouldDirty: true, shouldValidate: true });
+  };
 
   const backToOneDay = () => {
     setAddsDays(false);
@@ -533,7 +325,11 @@ export const AbsenceFormModal = ({
     hasLookedForFreeDay.current = true;
     if (!isUnavailable(startDate)) return;
 
-    const freeDay = firstFreeWorkingDay(startDate, daysTo, isUnavailable);
+    const freeDay = firstFreeWorkingDay(
+      startDate,
+      daysWindow.to,
+      isUnavailable,
+    );
     if (freeDay) {
       setValue("startDate", freeDay);
       setValue("endDate", freeDay);
@@ -544,21 +340,20 @@ export const AbsenceFormModal = ({
     areDaysKnown,
     isUnavailable,
     startDate,
-    daysTo,
+    daysWindow.to,
     setValue,
   ]);
 
   // Named only when some day in reach is one the absence can't take.
   const hasUnavailableDays =
-    picksDays &&
-    !!firstUnavailableAfter(shiftISODate(daysFrom, -1), daysTo, isUnavailable);
+    picksDays && !!firstUnavailableIn([daysWindow], isUnavailable);
   const unavailableHint = hasUnavailableDays
     ? UNAVAILABLE_DAYS_HINT
     : undefined;
 
   const onSubmit = async (data: AbsenceFormData) => {
     setTriedSaving(true);
-    if (filledDay || (isPart && (!day || partError))) return;
+    if (filledDay || daysError || (isPart && (!day || partError))) return;
 
     const shared = {
       type: data.type,
@@ -651,6 +446,7 @@ export const AbsenceFormModal = ({
                 !arePlansKnown ||
                 isDayPending ||
                 !!filledDay ||
+                !!daysError ||
                 (isPart && !day)
               }
             >
@@ -682,28 +478,34 @@ export const AbsenceFormModal = ({
 
           {lockedPart && (
             <>
-              <div className="grid gap-4 sm:grid-cols-2">
-                {lockedPart.startOpen && (
-                  <DatePicker
-                    label="First day"
-                    value={startDate}
-                    maxDate={shiftISODate(lockedPart.from, -1)}
-                    onChange={(day) =>
-                      setValue("startDate", day, { shouldDirty: true })
-                    }
-                  />
-                )}
-                {lockedPart.endOpen && (
-                  <DatePicker
-                    label="Last day"
-                    value={endDate}
-                    minDate={shiftISODate(lockedPart.to, 1)}
-                    onChange={(day) =>
-                      setValue("endDate", day, { shouldDirty: true })
-                    }
-                  />
-                )}
-              </div>
+              <Field id="absence-open-days" group error={daysError}>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {lockedPart.startOpen && (
+                    <DatePicker
+                      label="First day"
+                      value={startDate}
+                      maxDate={shiftISODate(lockedPart.from, -1)}
+                      isDayDisabled={isUnavailable}
+                      onMonthChange={setShownMonth}
+                      onChange={(day) =>
+                        setValue("startDate", day, { shouldDirty: true })
+                      }
+                    />
+                  )}
+                  {lockedPart.endOpen && (
+                    <DatePicker
+                      label="Last day"
+                      value={endDate}
+                      minDate={shiftISODate(lockedPart.to, 1)}
+                      isDayDisabled={isUnavailable}
+                      onMonthChange={setShownMonth}
+                      onChange={(day) =>
+                        setValue("endDate", day, { shouldDirty: true })
+                      }
+                    />
+                  )}
+                </div>
+              </Field>
               <p className="flex gap-2 text-sm text-muted-foreground">
                 <Lock className="mt-0.5 size-4 shrink-0" aria-hidden />
                 <span>
@@ -732,11 +534,15 @@ export const AbsenceFormModal = ({
             />
           )}
 
-          {picksDays && !opensOnDay && (
+          {picksDays && !lockedPart && !opensOnDay && (
             <Field
               id="absence-days"
               group
-              error={errors.startDate?.message ?? errors.endDate?.message}
+              error={
+                errors.startDate?.message ??
+                errors.endDate?.message ??
+                daysError
+              }
               description={unavailableHint}
             >
               <div className="grid gap-4 sm:grid-cols-2">
@@ -777,7 +583,7 @@ export const AbsenceFormModal = ({
             <Field
               id="absence-until"
               group
-              error={errors.endDate?.message}
+              error={errors.endDate?.message ?? daysError}
               description={unavailableHint}
             >
               <div className="flex items-end gap-2">
@@ -918,140 +724,5 @@ export const AbsenceFormModal = ({
         loading={isDeleting}
       />
     </>
-  );
-};
-
-/** Why an absence opens to be read only, by default a locked month. */
-export const ABSENCE_IN_LOCKED_MONTH =
-  "It's in a locked month, so it can no longer be changed.";
-/** For an absence the viewer can't change because some of its days are another team's. */
-export const absenceInAnotherTeam = (subjectName: string) =>
-  `This absence includes days in another team. ${subjectName} or your company owner can change it.`;
-
-type LockedAbsenceModalProps = {
-  absence: Absence;
-  subjectName?: string;
-  reason?: string;
-  onClose: () => void;
-};
-
-/** An absence the viewer can only read in full: nothing about it can change. */
-export const LockedAbsenceModal = ({
-  absence,
-  subjectName,
-  reason = ABSENCE_IN_LOCKED_MONTH,
-  onClose,
-}: LockedAbsenceModalProps) => (
-  <ResourceFormModal
-    open
-    onClose={onClose}
-    title="Absence"
-    description={[subjectName, formatAbsenceRange(absence)]
-      .filter(Boolean)
-      .join(" · ")}
-    footer={
-      <Button type="button" variant="outline" size="sm" onClick={onClose}>
-        Close
-      </Button>
-    }
-  >
-    <dl className="grid grid-cols-2 gap-x-4 gap-y-4">
-      <div>
-        <dt className="text-xs text-muted-foreground">Reason</dt>
-        <dd className="mt-1 text-sm text-foreground">
-          {ABSENCE_TYPE_LABELS[absence.type]}
-        </dd>
-      </div>
-      <div>
-        <dt className="text-xs text-muted-foreground">Days</dt>
-        <dd className="mt-1 text-sm text-foreground">
-          {formatAbsenceRange(absence)}
-        </dd>
-      </div>
-      {absence.note && (
-        <div className="col-span-2">
-          <dt className="text-xs text-muted-foreground">Note</dt>
-          <dd className="mt-1 text-sm break-words whitespace-pre-line text-foreground">
-            {absence.note}
-          </dd>
-        </div>
-      )}
-    </dl>
-
-    <ChangedByNote record={absence} className="mt-6" />
-
-    <p className="mt-6 flex gap-2 text-sm text-muted-foreground">
-      <Lock className="mt-0.5 size-4 shrink-0" aria-hidden />
-      {reason}
-    </p>
-  </ResourceFormModal>
-);
-
-type PersonAbsenceModalProps = {
-  /** Whose absence it is; an owner or a manager records or opens it. */
-  user: Pick<User, "id" | "firstName" | "lastName">;
-  /** The day a new absence starts on. */
-  date: string;
-  absence?: Absence;
-  /** Opened from a day: that day only, whole or in part. */
-  isSingleDay?: boolean;
-  isLocked: (date: string) => boolean;
-  onClose: () => void;
-};
-
-/**
- * A person's absence as an owner or a manager meets it in a team grid: the
- * form, or the absence to read when a locked month or another team's days
- * keep it from changing.
- */
-export const PersonAbsenceModal = ({
-  user,
-  date,
-  absence,
-  isSingleDay,
-  isLocked,
-  onClose,
-}: PersonAbsenceModalProps) => {
-  const actions = useAbsencesMutations();
-  const subjectName = fullName(user);
-  // Read only once both its ends are locked, as on the timesheet. Otherwise
-  // the API says whether the viewer may change it: some of its days may be
-  // another team's, which is the person's and the owner's to change.
-  const readOnlyReason =
-    absence && isAbsenceFrozen(isLocked, absence.startDate, absence.endDate)
-      ? ABSENCE_IN_LOCKED_MONTH
-      : absence?.canChange === false
-        ? absenceInAnotherTeam(subjectName)
-        : undefined;
-
-  if (absence && readOnlyReason) {
-    return (
-      <LockedAbsenceModal
-        absence={absence}
-        reason={readOnlyReason}
-        subjectName={subjectName}
-        onClose={onClose}
-      />
-    );
-  }
-
-  return (
-    <AbsenceFormModal
-      open
-      onClose={onClose}
-      userId={user.id}
-      subjectName={subjectName}
-      date={date}
-      isSingleDay={isSingleDay}
-      absence={absence}
-      isLocked={isLocked}
-      onCreate={(payload) =>
-        actions.create.mutateAsync({ ...payload, userId: user.id })
-      }
-      onUpdate={(id, data) => actions.update.mutateAsync({ id, data })}
-      onDelete={(id) => actions.delete.mutateAsync(id)}
-      isSaving={actions.create.isPending || actions.update.isPending}
-      isDeleting={actions.delete.isPending}
-    />
   );
 };
