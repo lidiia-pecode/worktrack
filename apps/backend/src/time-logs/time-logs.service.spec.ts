@@ -450,12 +450,12 @@ describe('TimeLogsService write scope', () => {
       ).resolves.toMatchObject({ minutes: 90 });
     });
 
-    it('refuses a manager for an entry outside their teams', async () => {
+    it("does not find an entry outside a manager's teams", async () => {
       const id = await existingLogFor(outsider.id);
 
       await expect(
         service.update(id, { minutes: 90 }, manager),
-      ).rejects.toThrow(ForbiddenException);
+      ).rejects.toThrow(NotFoundException);
     });
 
     it("corrects a deactivated person's entry from before they left", async () => {
@@ -473,12 +473,12 @@ describe('TimeLogsService write scope', () => {
       });
     });
 
-    it("refuses an employee for someone else's entry", async () => {
+    it("does not find someone else's entry for an employee", async () => {
       const id = await existingLogFor(member.id);
 
       await expect(
         service.update(id, { minutes: 90 }, outsider),
-      ).rejects.toThrow(ForbiddenException);
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('lets a manager delete an entry in a team they lead', async () => {
@@ -489,11 +489,11 @@ describe('TimeLogsService write scope', () => {
       });
     });
 
-    it("refuses a delete outside the caller's scope", async () => {
+    it("does not find an entry to delete outside the caller's scope", async () => {
       const id = await existingLogFor(outsider.id);
 
       await expect(service.delete(id, manager)).rejects.toThrow(
-        ForbiddenException,
+        NotFoundException,
       );
     });
 
@@ -1147,14 +1147,14 @@ describe('TimeLogsService write scope', () => {
       ]);
     });
 
-    it("refuses moving an entry into the other team's days, and changing one there", async () => {
+    it("refuses moving an entry into the other team's days, and does not find one there", async () => {
       const id = await existingLogFor(mover.id, LAST_DAY_IN_ALPHA);
 
       await expect(
         service.update(id, { date: MOVE_DAY }, manager),
       ).rejects.toThrow(ForbiddenException);
       await expect(service.delete(id, betaManager)).rejects.toThrow(
-        ForbiddenException,
+        NotFoundException,
       );
       await expect(
         service.update(id, { date: MOVE_DAY }, owner),

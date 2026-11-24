@@ -307,6 +307,51 @@ describe('the app over HTTP', () => {
     expect(Object.keys(body.errors).sort()).toEqual(['firstName', 'nickname']);
   });
 
+  describe('input no screen sends', () => {
+    const nested = (depth: number): unknown =>
+      Array.from({ length: depth }).reduce<unknown>(
+        (inner) => ({ note: inner }),
+        'deep',
+      );
+
+    it.each([
+      ['a null character in a search', 'GET /users?search=a%00b', undefined],
+      [
+        'a date far past any real one',
+        'GET /planning/week?date=9999-12-31',
+        undefined,
+      ],
+      [
+        'a page number no list has',
+        'GET /users?page=1000000000000000000',
+        undefined,
+      ],
+      ['a body nested thousands deep', 'POST /time-logs', nested(5000)],
+    ])('answers 400 to %s', async (_name, route, body) => {
+      const response = await call(route, { cookie: ownerCookie, body });
+
+      expect(response.status).toBe(400);
+    });
+
+    it('refuses a note of only spaces', async () => {
+      const response = await call('POST /time-logs', {
+        cookie: ownerCookie,
+        body: {
+          projectActivityId: ANY_ID,
+          minutes: 60,
+          date: '2026-11-02',
+          note: '    ',
+        },
+      });
+      const { errors } = (await response.json()) as {
+        errors: Record<string, string[]>;
+      };
+
+      expect(response.status).toBe(400);
+      expect(Object.keys(errors)).toEqual(['note']);
+    });
+  });
+
   it('never sends a password hash or a Google id', async () => {
     const response = await call('GET /users/me', { cookie: ownerCookie });
     const body = (await response.json()) as Record<string, unknown>;

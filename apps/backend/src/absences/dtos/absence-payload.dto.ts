@@ -1,3 +1,4 @@
+import { TrimString } from 'src/lib/decorators';
 import {
   IsEnum,
   IsInt,
@@ -38,6 +39,7 @@ export class AbsencePayload {
   minutes?: number | null;
 
   @IsOptional()
+  @TrimString({ keepNull: true })
   @IsString()
   @MinLength(3)
   @MaxLength(1000)

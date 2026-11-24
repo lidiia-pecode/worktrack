@@ -3,6 +3,7 @@ import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
+  NotFoundException,
 } from '@nestjs/common';
 import { DataSource, In } from 'typeorm';
 
@@ -345,14 +346,14 @@ describe('AbsencesService', () => {
       ).rejects.toThrow(ForbiddenException);
     });
 
-    it('applies the same scope to update and delete', async () => {
+    it('does not find an absence out of reach to update or delete', async () => {
       const id = await existingAbsence(member.id);
 
       await expect(
         service.update(id, { note: 'changed' }, outsider),
-      ).rejects.toThrow(ForbiddenException);
+      ).rejects.toThrow(NotFoundException);
       await expect(service.delete(id, outsider)).rejects.toThrow(
-        ForbiddenException,
+        NotFoundException,
       );
     });
 

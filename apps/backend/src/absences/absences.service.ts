@@ -44,7 +44,7 @@ import type { AuthUser } from 'src/auth/auth-strategies/types';
 import { pageOffset } from 'src/lib/dtos/pagination-query.dto';
 
 /** A person's day as the absence form measures part of it. */
-export interface AbsenceDay {
+export interface AbsenceDayRoom {
   date: string;
   workingMinutes: number;
   loggedMinutes: number;
@@ -175,7 +175,10 @@ export class AbsencesService {
    * against: their working day, the time logged and the time planned. Read
    * with the absence write scope, since only who records one needs it.
    */
-  async dayFor(query: AbsenceDayQuery, user: AuthUser): Promise<AbsenceDay> {
+  async dayFor(
+    query: AbsenceDayQuery,
+    user: AuthUser,
+  ): Promise<AbsenceDayRoom> {
     const ownerId = query.userId ?? user.id;
     const { date } = query;
     await this.assertCanWriteFor(ownerId, user, { from: date, to: date });
@@ -797,10 +800,14 @@ export class AbsencesService {
     user: AuthUser,
     moveTo?: { startDate?: string; endDate?: string },
   ): Promise<string> {
-    const absence = await this.repo.findOne({
-      where: { id, companyId: user.companyId },
-      select: ['id', 'userId', 'startDate', 'endDate'],
-    });
+    // Read as the caller reads it, so an absence out of their reach is not
+    // found rather than refused, and its id tells nothing.
+    const qb = this.repo
+      .createQueryBuilder('a')
+      .select(['a.id', 'a.userId', 'a.startDate', 'a.endDate'])
+      .where('a.id = :id', { id });
+    this.applyVisibilityFilter(qb, user);
+    const absence = await qb.getOne();
 
     if (!absence) throw new NotFoundException('Absence not found');
 

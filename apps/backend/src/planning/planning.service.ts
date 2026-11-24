@@ -624,15 +624,19 @@ export class PlanningService {
       })
       .getMany();
 
-    const [dayLimitOn, partAbsences] = await Promise.all([
-      this.dayLimitsFor(company.id, [userId], startDate, endDate),
-      this.expectedHours.partAbsenceMinutesFor(
-        company.id,
-        [userId],
-        startDate,
-        endDate,
-      ),
-    ]);
+    const partAbsences = await this.expectedHours.partAbsenceMinutesFor(
+      company.id,
+      [userId],
+      startDate,
+      endDate,
+    );
+    const dayLimitOn = await this.dayLimitsFor(
+      company.id,
+      [userId],
+      startDate,
+      endDate,
+      partAbsences,
+    );
     const partAbsenceOn = partAbsences.get(userId) ?? new Map<string, number>();
     // A partly absent day takes the lines in what its plans on other
     // projects leave of it (decision 16).
@@ -917,10 +921,17 @@ export class PlanningService {
     userIds: string[],
     from: string,
     until: string,
+    knownPartAbsences?: Map<string, Map<string, number>>,
   ): Promise<DayLimitOn> {
     const [timelines, partAbsences] = await Promise.all([
       this.capacity.timelinesFor(companyId, userIds, until),
-      this.expectedHours.partAbsenceMinutesFor(companyId, userIds, from, until),
+      knownPartAbsences ??
+        this.expectedHours.partAbsenceMinutesFor(
+          companyId,
+          userIds,
+          from,
+          until,
+        ),
     ]);
 
     // Whole minutes: a day saved before the 30-minute steps can be 6h 24.4m.

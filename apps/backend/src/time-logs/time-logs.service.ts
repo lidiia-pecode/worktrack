@@ -621,12 +621,9 @@ export class TimeLogsService {
     user: AuthUser,
     newDate?: string,
   ): Promise<string> {
-    const log = await this.repo.findOne({
-      where: { id, companyId: user.companyId },
-      select: ['id', 'userId', 'date'],
-    });
-
-    if (!log) throw new NotFoundException('TimeLog not found');
+    // Read as the caller reads it, so an entry out of their reach is not
+    // found rather than refused, and its id tells nothing.
+    const log = await this.getById(id, user);
 
     await this.assertCanWriteFor(log.userId, user, log.date);
     if (newDate && newDate !== log.date) {

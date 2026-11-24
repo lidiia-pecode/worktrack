@@ -1,3 +1,4 @@
+import { TrimString } from 'src/lib/decorators';
 import {
   IsBoolean,
   IsInt,
@@ -29,6 +30,7 @@ export class TimeLogPayload {
   minutes!: number;
 
   @IsOptional()
+  @TrimString({ keepNull: true })
   @IsString()
   @MinLength(3)
   @MaxLength(1000)
