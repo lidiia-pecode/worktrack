@@ -31,7 +31,7 @@ import { CloseButton } from "../../shared/buttons/CloseButton";
 import { ErrorState } from "../../shared/ErrorState";
 import { LoadingState } from "../../shared/LoadingState";
 import { SidePanel } from "../../shared/SidePanel";
-import { teamTimeHref } from "../../team/team-links";
+import { teamTimeHref } from "../../shared/team-links";
 import { AgainstPlanRow } from "./AgainstPlanRow";
 
 const ReportPanel = ({

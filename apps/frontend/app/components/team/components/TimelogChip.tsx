@@ -3,7 +3,7 @@ import { formatDuration } from "@/lib/utils/date";
 import { getTimelogDisplay } from "@/lib/utils/timelog";
 
 import { EntryChip } from "../../shared/week/EntryChip";
-import { timelogDetailsId } from "../../timesheet/components/TimelogPopover";
+import { timelogDetailsId } from "../../shared/time-entry/TimelogPopover";
 
 type TimelogChipProps = {
   timelog: TimeLog;

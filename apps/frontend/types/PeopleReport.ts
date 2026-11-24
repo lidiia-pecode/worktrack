@@ -39,6 +39,7 @@ export interface ReportTeam extends ReportPart {
 export interface PeopleReportRow extends PeopleReportFigures {
   userId: string;
   name: string;
+  email: string;
   position: string | null;
   /** A deactivated person is listed while they had days in the range. */
   status: UserStatus;

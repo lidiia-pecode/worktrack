@@ -76,7 +76,7 @@ vi.mock("./components/PlanPeriodModal", async (importOriginal) => ({
   ...(await importOriginal<object>()),
   PlanPeriodModal: () => <p>Period dialog</p>,
 }));
-vi.mock("../timesheet/components/AbsenceFormModal", async (importOriginal) => ({
+vi.mock("../shared/absence/AbsenceFormModal", async (importOriginal) => ({
   ...(await importOriginal<object>()),
   AbsenceFormModal: () => <p>Absence form</p>,
 }));

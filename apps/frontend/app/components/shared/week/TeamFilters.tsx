@@ -6,9 +6,9 @@ import { useAllProjectsQuery } from "@/hooks/useProjects";
 import { Project } from "@/types";
 import { ProjectStatus } from "@/types/enums";
 
-import { FilterBar } from "../../shared/FilterBar";
-import { FormSelect } from "../../shared/FormSelect";
-import { SearchInput } from "../../shared/inputs/SearchInput";
+import { FilterBar } from "../FilterBar";
+import { FormSelect } from "../FormSelect";
+import { SearchInput } from "../inputs/SearchInput";
 import { useTeamChoice } from "../useTeamChoice";
 
 export const ALL_OPTION = "all";

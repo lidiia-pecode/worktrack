@@ -23,7 +23,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
-import { ABSENCE_PATTERN } from "../../timesheet/consts";
+import { ABSENCE_PATTERN } from "../../shared/week/day-styles";
 import { ErrorState } from "../../shared/ErrorState";
 import { LoadingState } from "../../shared/LoadingState";
 

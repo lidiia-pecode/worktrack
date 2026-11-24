@@ -3,8 +3,8 @@
 import { useCallback, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 
-import { TEAM_PARAM } from "../team/team-links";
-import { useTeamChoice } from "../team/useTeamChoice";
+import { TEAM_PARAM } from "../shared/team-links";
+import { useTeamChoice } from "../shared/useTeamChoice";
 
 /**
  * The one team Reports shows, kept in `?team=`. A linked team that isn't the

@@ -28,8 +28,6 @@ const usersQueries = createEntityQuery<UserListItem, UserQueryParams>({
   },
 });
 
-export const useUsersQuery = usersQueries.useQuery;
-
 export const useUsersInfiniteQuery = usersQueries.useInfiniteQuery;
 
 /**

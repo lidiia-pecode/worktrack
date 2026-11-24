@@ -10,14 +10,14 @@ import TextareaAutosize from "react-textarea-autosize";
 
 import { PickerProjectActivity } from "@/hooks/useAssignableActivities";
 
-import { DiscardChangesModal } from "../../shared/DiscardChangesModal";
-import { ImpactDialog } from "../../shared/ImpactDialog";
-import { useDiscardGuard } from "../../shared/useDiscardGuard";
-import { FormSelect } from "../../shared/FormSelect";
-import { TimePicker } from "../../shared/TimePicker";
-import { ResourceFormModal } from "../../shared/resource/ResourceFormModal";
+import { DiscardChangesModal } from "../DiscardChangesModal";
+import { ImpactDialog } from "../ImpactDialog";
+import { useDiscardGuard } from "../useDiscardGuard";
+import { FormSelect } from "../FormSelect";
+import { TimePicker } from "../TimePicker";
+import { ResourceFormModal } from "../resource/ResourceFormModal";
 import { projects } from "../../layout/sidebar/sidebar-navigation";
-import { ChangedByNote } from "./ChangedByNote";
+import { ChangedByNote } from "../ChangedByNote";
 import { TimeLog, TimeLogPayload, UpdateTimeLogPayload } from "@/types";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -36,7 +36,7 @@ import {
   EntryChoice,
   readLastEntryChoice,
   storeLastEntryChoice,
-} from "../helpers/last-entry-choice";
+} from "./last-entry-choice";
 import { DATE_LOCALE } from "@/lib/utils/date";
 
 const FORM_ID = "timelog-form";
@@ -47,8 +47,8 @@ const timeLogSchema = z
   .object({
     projectId: z.string().min(1, "Select a project"),
     activityId: z.string().min(1, "Select an activity"),
-    hours: z.coerce.number().min(0).max(24),
-    minutes: z.coerce.number().min(0).max(59),
+    hours: z.number().min(0).max(24),
+    minutes: z.number().min(0).max(59),
     note: optionalNoteSchema,
     isBillable: z.boolean(),
   })
@@ -202,8 +202,7 @@ export const TimeLogFormModal = ({
     reset,
     formState: { errors, isDirty, isSubmitted, isSubmitting },
   } = useForm<TimeLogFormData>({
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    resolver: zodResolver(timeLogSchema) as any,
+    resolver: zodResolver(timeLogSchema),
     defaultValues,
   });
 

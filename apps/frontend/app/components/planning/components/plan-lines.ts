@@ -14,8 +14,8 @@ export const addedLineMinutes = ({
 export const addedLineSchema = z
   .object({
     projectId: z.string(),
-    hours: z.coerce.number().min(0).max(24),
-    minutes: z.coerce.number().min(0).max(59),
+    hours: z.number().min(0).max(24),
+    minutes: z.number().min(0).max(59),
   })
   .refine((data) => isOnPlanStep(data.minutes), {
     message: "Plan in 15-minute steps",

@@ -24,8 +24,8 @@ import { changedByText } from "@/lib/utils/user";
 
 import { Badge } from "@/components/ui/badge";
 
-import { ABSENCE_PATTERN } from "../consts";
-import { dayFill } from "../helpers/day-fill";
+import { ABSENCE_PATTERN } from "../../shared/week/day-styles";
+import { dayFill } from "../../shared/week/day-fill";
 import { TimesheetDay, dayActions } from "../helpers/day-state";
 
 const FOCUS_RING =

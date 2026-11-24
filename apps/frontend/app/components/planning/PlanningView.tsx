@@ -25,6 +25,7 @@ import {
   todayISODate,
 } from "@/lib/utils/date";
 import { cn } from "@/lib/utils/cn";
+import { combineQueryStates } from "@/lib/utils/query-states";
 import {
   mapAbsencesByUserAndDate,
   newAbsenceStartDate,
@@ -57,13 +58,13 @@ import { BackToThisWeekButton, WeekNav } from "../shared/week/WeekNav";
 import { BackToNowButton } from "../shared/buttons/BackToNowButton";
 import { StepArrows } from "../shared/buttons/StepArrows";
 import { SegmentedControl } from "../shared/SegmentedControl";
-import { TeamFilters } from "../team/components/TeamFilters";
-import { useTeamTimeFilters } from "../team/useTeamTimeFilters";
-import { PersonAbsenceModal } from "../timesheet/components/PersonAbsenceModal";
+import { TeamFilters } from "../shared/week/TeamFilters";
+import { useTeamTimeFilters } from "../shared/week/useTeamTimeFilters";
+import { PersonAbsenceModal } from "../shared/absence/PersonAbsenceModal";
 import { PlanPeriodModal } from "./components/PlanPeriodModal";
 import { PlanningWeekRow } from "./components/PlanningWeekRow";
 import { PlanningMonthRow } from "./components/PlanningMonthRow";
-import { PlanningColumn, PlanningTable } from "./components/PlanningTable";
+import { GridColumn, PeopleGridTable } from "../shared/week/PeopleGridTable";
 import { monthWorkingWeeks, weekLabel } from "./month-weeks";
 import { usePlanningPeriod } from "./usePlanningPeriod";
 
@@ -90,13 +91,8 @@ const UNITS = [
  * them, day by day. Both share the filters, the sort and the dialogs.
  */
 export const PlanningView = ({ role, viewerId }: PlanningViewProps) => {
-  const {
-    weekStartDay,
-    timezone,
-    isLoading: isLoadingSettings,
-    isError: isSettingsError,
-    refetch: refetchSettings,
-  } = useWorkSettings();
+  const settings = useWorkSettings();
+  const { weekStartDay, timezone } = settings;
 
   const {
     unit,
@@ -146,24 +142,15 @@ export const PlanningView = ({ role, viewerId }: PlanningViewProps) => {
     return dates;
   }, [dateFrom, dateTo]);
 
-  const {
-    rows,
-    isLoading: isLoadingGrid,
-    isPlaceholderData: isShowingPreviousPeriod,
-    isError: isGridError,
-    refetch: refetchGrid,
-  } = usePlanningGrid(unit, { date: dateFrom, teamId });
+  const grid = usePlanningGrid(unit, { date: dateFrom, teamId });
+  const { rows, isPlaceholderData: isShowingPreviousPeriod } = grid;
 
-  const {
-    items: absences,
-    isLoading: isLoadingAbsences,
-    isError: isAbsencesError,
-    refetch: refetchAbsences,
-  } = useAllAbsencesQuery({
+  const absenceList = useAllAbsencesQuery({
     dateFrom,
     dateTo,
     teamId,
   });
+  const { items: absences } = absenceList;
 
   const absencesByUser = useMemo(
     () => mapAbsencesByUserAndDate(absences, shownDates),
@@ -177,12 +164,8 @@ export const PlanningView = ({ role, viewerId }: PlanningViewProps) => {
     absences,
     todayISODate(timezone),
   );
-  const {
-    isLocked,
-    isLoading: isLoadingLocks,
-    isError: isLocksError,
-    refetch: refetchLocks,
-  } = useLockedDates(lockRange.dateFrom, lockRange.dateTo);
+  const locks = useLockedDates(lockRange.dateFrom, lockRange.dateTo);
+  const { isLocked } = locks;
 
   // The same list the project filter shows, so it comes from the cache.
   const { items: projects } = useAllProjectsQuery();
@@ -273,7 +256,7 @@ export const PlanningView = ({ role, viewerId }: PlanningViewProps) => {
   };
   const periodWord = isMonth ? "month" : "week";
 
-  const monthColumns: PlanningColumn[] = monthWeeks.map((week) => ({
+  const monthColumns: GridColumn[] = monthWeeks.map((week) => ({
     key: toISODate(week[0]),
     // Wide by the days they hold, a short edge week still wide enough for
     // its hours.
@@ -297,7 +280,7 @@ export const PlanningView = ({ role, viewerId }: PlanningViewProps) => {
       </span>
     ),
   }));
-  const weekColumns: PlanningColumn[] = workingDates.map((date) => ({
+  const weekColumns: GridColumn[] = workingDates.map((date) => ({
     key: toISODate(date),
     width: "7rem",
     headingClassName: "p-0",
@@ -310,15 +293,14 @@ export const PlanningView = ({ role, viewerId }: PlanningViewProps) => {
     ),
   }));
 
-  const hasError =
-    isSettingsError || isGridError || isAbsencesError || isLocksError;
-
-  const retry = () => {
-    void refetchGrid();
-    void refetchSettings();
-    void refetchAbsences();
-    void refetchLocks();
-  };
+  // The locks too, so no day shows before it is known whether it can change.
+  // The toolbar stays meanwhile, as on every page with a period.
+  const { isLoading, hasError, retry } = combineQueryStates([
+    settings,
+    grid,
+    absenceList,
+    locks,
+  ]);
 
   const {
     options: teamOptions,
@@ -334,10 +316,6 @@ export const PlanningView = ({ role, viewerId }: PlanningViewProps) => {
   });
   const onlyViewer = isLoadingTeams || isTeamsError ? null : onlyViewerFromRows;
 
-  // The locks too, so no day shows before it is known whether it can change.
-  // The toolbar stays meanwhile, as on every page with a period.
-  const isLoading =
-    isLoadingSettings || isLoadingGrid || isLoadingAbsences || isLoadingLocks;
   const isReady = !isLoading && !hasError;
 
   return (
@@ -450,8 +428,10 @@ export const PlanningView = ({ role, viewerId }: PlanningViewProps) => {
       )}
 
       {isReady && shownRows.length > 0 && (
-        <PlanningTable
+        <PeopleGridTable
           columns={isMonth ? monthColumns : weekColumns}
+          totalLabel="Planned"
+          className="min-w-4xl"
           sort={sort}
           onSort={sortBy}
           isStale={isShowingPreviousPeriod}
@@ -489,7 +469,7 @@ export const PlanningView = ({ role, viewerId }: PlanningViewProps) => {
               />
             ),
           )}
-        </PlanningTable>
+        </PeopleGridTable>
       )}
 
       <Tooltip handle={tooltip}>

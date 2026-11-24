@@ -35,13 +35,13 @@ import {
 import { cn } from "@/lib/utils/cn";
 import { optionalNoteSchema } from "@/lib/forms/schemas/note.schema";
 
-import { ImpactDialog } from "../../shared/ImpactDialog";
-import { SegmentedControl } from "../../shared/SegmentedControl";
-import { TimePicker } from "../../shared/TimePicker";
-import { FormSelect } from "../../shared/FormSelect";
-import { DatePicker } from "../../shared/inputs";
-import { ResourceFormModal } from "../../shared/resource/ResourceFormModal";
-import { PartLoadError } from "../../shared/PartLoadError";
+import { ImpactDialog } from "../ImpactDialog";
+import { SegmentedControl } from "../SegmentedControl";
+import { TimePicker } from "../TimePicker";
+import { FormSelect } from "../FormSelect";
+import { DatePicker } from "../inputs";
+import { ResourceFormModal } from "../resource/ResourceFormModal";
+import { PartLoadError } from "../PartLoadError";
 import {
   UNAVAILABLE_DAYS_HINT,
   changeableDays,
@@ -62,7 +62,7 @@ import {
   plannedAgainstLeftText,
   removedOpenDaysText,
 } from "./absence-form-texts";
-import { ChangedByNote } from "./ChangedByNote";
+import { ChangedByNote } from "../ChangedByNote";
 import { useAbsenceDayPart } from "./useAbsenceDayPart";
 import { useUnavailableDays } from "./useUnavailableDays";
 
@@ -165,8 +165,7 @@ export const AbsenceFormModal = ({
     reset,
     formState: { errors, isDirty },
   } = useForm<AbsenceFormData>({
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    resolver: zodResolver(absenceSchema) as any,
+    resolver: zodResolver(absenceSchema),
     defaultValues,
   });
 

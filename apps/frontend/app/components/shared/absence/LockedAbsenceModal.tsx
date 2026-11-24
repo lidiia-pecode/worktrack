@@ -6,8 +6,8 @@ import { Absence } from "@/types";
 import { ABSENCE_TYPE_LABELS, formatAbsenceRange } from "@/lib/utils/absence";
 import { Button } from "@/components/ui/button";
 
-import { ResourceFormModal } from "../../shared/resource/ResourceFormModal";
-import { ChangedByNote } from "./ChangedByNote";
+import { ResourceFormModal } from "../resource/ResourceFormModal";
+import { ChangedByNote } from "../ChangedByNote";
 
 /** Why an absence opens to be read only, by default a locked month. */
 export const ABSENCE_IN_LOCKED_MONTH =

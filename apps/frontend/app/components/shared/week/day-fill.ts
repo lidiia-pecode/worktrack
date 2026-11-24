@@ -3,7 +3,7 @@ import {
   EXCESS_DAY_FILL,
   WEEKEND_EXTRA_PATTERN,
   WEEKEND_PATTERN,
-} from "../consts";
+} from "./day-styles";
 
 type DayFillInput = {
   isAbsent: boolean;

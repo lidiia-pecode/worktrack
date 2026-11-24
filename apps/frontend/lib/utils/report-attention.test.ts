@@ -29,6 +29,7 @@ const person = (
 ): PeopleReportRow => ({
   userId: name,
   name,
+  email: `${name}@example.test`,
   position: null,
   status: UserStatus.ACTIVE,
   lastWorkingDay: null,

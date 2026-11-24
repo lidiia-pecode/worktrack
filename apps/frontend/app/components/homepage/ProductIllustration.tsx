@@ -6,7 +6,7 @@ import { formatDuration } from "@/lib/utils/date";
 import { entryTint } from "@/lib/utils/project-colors";
 
 import { Avatar } from "../shared/Avatar";
-import { ABSENCE_PATTERN } from "../timesheet/consts";
+import { ABSENCE_PATTERN } from "../shared/week/day-styles";
 import {
   SAMPLE_PROJECTS,
   SAMPLE_REPORT,

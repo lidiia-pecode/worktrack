@@ -12,8 +12,8 @@ import {
   SEARCH_PARAM,
   SORT_PARAM,
   TEAM_PARAM,
-} from "./team-links";
-import { useTeamChoice } from "./useTeamChoice";
+} from "../team-links";
+import { useTeamChoice } from "../useTeamChoice";
 
 // Through the history API, so the page isn't rendered again from the server;
 // the week and the highlighted person stay.

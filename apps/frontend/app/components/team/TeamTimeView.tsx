@@ -39,6 +39,7 @@ import {
   TeamSortKey,
 } from "@/lib/utils/team-rows";
 import { cn } from "@/lib/utils/cn";
+import { combineQueryStates } from "@/lib/utils/query-states";
 import { Absence, PlanningEntry, TeamSummaryUser, TimeLog } from "@/types";
 import { UserRole } from "@/types/enums";
 
@@ -53,15 +54,14 @@ import { BackToThisWeekButton, WeekNav } from "../shared/week/WeekNav";
 import { OnlyViewerNotice } from "../shared/week/OnlyViewerNotice";
 import { onlyViewerReason } from "../shared/week/only-viewer";
 import { NonWorkDayConfirm } from "../shared/week/NonWorkDayConfirm";
-import { PersonAbsenceModal } from "../timesheet/components/PersonAbsenceModal";
-import { TimeLogFormModal } from "../timesheet/components/TimeLogFormModal";
-import { lastEntryChoiceKey } from "../timesheet/helpers/last-entry-choice";
+import { PersonAbsenceModal } from "../shared/absence/PersonAbsenceModal";
+import { TimeLogFormModal } from "../shared/time-entry/TimeLogFormModal";
+import { lastEntryChoiceKey } from "../shared/time-entry/last-entry-choice";
 import { managerWelcomeKey } from "./components/ManagerWelcome";
-import { SortableHeading } from "./components/SortableHeading";
-import { TeamFilters } from "./components/TeamFilters";
+import { GridColumn, PeopleGridTable } from "../shared/week/PeopleGridTable";
+import { TeamFilters } from "../shared/week/TeamFilters";
 import { TeamWeekRow } from "./components/TeamWeekRow";
-import { STICKY_PERSON_CELL } from "../shared/week/sticky-column";
-import { useTeamTimeFilters } from "./useTeamTimeFilters";
+import { useTeamTimeFilters } from "../shared/week/useTeamTimeFilters";
 
 type EntryForm = {
   user: TeamSummaryUser;
@@ -84,6 +84,9 @@ type TeamTimeViewProps = {
   /** A person whose row to mark and scroll to, from a link. */
   highlightedPersonId?: string;
 };
+
+// Saturday and Sunday are narrow: they rarely hold time (`w-22`).
+const WEEKEND_COLUMN_WIDTH = "5.5rem";
 
 type WeekendToggleProps = {
   isShown: boolean;
@@ -131,12 +134,8 @@ export const TeamTimeView = ({
   viewerId,
   highlightedPersonId,
 }: TeamTimeViewProps) => {
-  const {
-    timezone,
-    isLoading: isLoadingSettings,
-    isError: isSettingsError,
-    refetch: refetchSettings,
-  } = useWorkSettings();
+  const settings = useWorkSettings();
+  const { timezone } = settings;
 
   const { weekStart, showWeekOf } = useShownWeek();
   const {
@@ -168,20 +167,14 @@ export const TeamTimeView = ({
   const dateFrom = toISODate(weekStart);
   const dateTo = toISODate(getWeekEnd(weekStart));
 
-  const {
-    rows,
-    totals,
-    isLoading: isLoadingSummary,
-    isPlaceholderData: isShowingPreviousWeek,
-    isError: isSummaryError,
-    refetch: refetchSummary,
-  } = useTeamTimeSummary({
+  const summary = useTeamTimeSummary({
     dateFrom,
     dateTo,
     teamId,
     projectId,
     includeEntries: true,
   });
+  const { rows, totals, isPlaceholderData: isShowingPreviousWeek } = summary;
 
   // Context for an empty day, narrowed like the entries; a failed load leaves
   // the days without it.
@@ -214,16 +207,8 @@ export const TeamTimeView = ({
       "this project")
     : undefined;
 
-  const {
-    items: absences,
-    isLoading: isLoadingAbsences,
-    isError: isAbsencesError,
-    refetch: refetchAbsences,
-  } = useAllAbsencesQuery({
-    dateFrom,
-    dateTo,
-    teamId,
-  });
+  const absenceList = useAllAbsencesQuery({ dateFrom, dateTo, teamId });
+  const { items: absences } = absenceList;
 
   const absencesByUser = useMemo(
     () => mapAbsencesByUserAndDate(absences, weekDates.map(toISODate)),
@@ -234,13 +219,8 @@ export const TeamTimeView = ({
 
   // An absence is frozen whole once any of its days locks, so its months count.
   const lockRange = lockLookupRange(dateFrom, dateTo, absences, todayIso);
-  const {
-    isLocked,
-    isEditable,
-    isLoading: isLoadingLocks,
-    isError: isLocksError,
-    refetch: refetchLocks,
-  } = useLockedDates(lockRange.dateFrom, lockRange.dateTo);
+  const locks = useLockedDates(lockRange.dateFrom, lockRange.dateTo);
+  const { isLocked, isEditable } = locks;
 
   const {
     options: teamOptions,
@@ -251,8 +231,10 @@ export const TeamTimeView = ({
     managerWelcomeKey(viewerId),
   );
 
-  const hasError =
-    isSettingsError || isSummaryError || isAbsencesError || isLocksError;
+  // The locks too, so no day shows before it is known whether it can change.
+  // The toolbar stays meanwhile, as on every page with a period.
+  const required = combineQueryStates([settings, summary, absenceList, locks]);
+  const { isLoading, hasError } = required;
 
   const hasActiveFilters = Boolean(teamId ?? projectId);
 
@@ -349,23 +331,34 @@ export const TeamTimeView = ({
   };
 
   const sortBy = (key: TeamSortKey) => setSort(nextTeamSort(sort, key));
-  const ariaSort = sort.direction === "asc" ? "ascending" : "descending";
+
+  const dayColumns: GridColumn[] = shownDates.map((date) => ({
+    key: toISODate(date),
+    width: isWeekend(date) ? WEEKEND_COLUMN_WIDTH : undefined,
+    headingClassName: "p-0",
+    heading: (
+      <WeekHeaderDay
+        date={date}
+        isToday={toISODate(date) === todayIso}
+        isLocked={isLocked(toISODate(date))}
+        action={
+          date === shownDates.at(-1) && (
+            <WeekendToggle
+              isShown={showsWeekend}
+              canHide={!hasWeekendTime}
+              onChange={setIsWeekendWanted}
+            />
+          )
+        }
+      />
+    ),
+  }));
 
   const retry = () => {
     void refetchPlans();
-    void refetchSummary();
-    void refetchSettings();
-    void refetchAbsences();
-    void refetchLocks();
+    required.retry();
   };
 
-  // The locks too, so no day shows before it is known whether it can change.
-  // The toolbar stays meanwhile, as on every page with a period.
-  const isLoading =
-    isLoadingSettings ||
-    isLoadingSummary ||
-    isLoadingAbsences ||
-    isLoadingLocks;
   const isReady = !isLoading && !hasError;
 
   return (
@@ -448,129 +441,58 @@ export const TeamTimeView = ({
       )}
 
       {isReady && !matchesNobody && (
-        <div
-          className={cn(
-            "overflow-x-auto transition-opacity",
-            isShowingPreviousWeek && "opacity-60",
-          )}
-          aria-busy={isShowingPreviousWeek}
+        // Narrow weekends and the week's total on the right fit the table in
+        // a 1280px screen's content area. Headings sit at the top, so the
+        // weekend's fold control under its date leaves every day on one line.
+        <PeopleGridTable
+          columns={dayColumns}
+          totalLabel="Logged"
+          className="min-w-240 [&_thead_th]:align-top"
+          sort={sort}
+          onSort={sortBy}
+          isStale={isShowingPreviousWeek}
         >
-          {/* Narrow weekends and the week's total on the right fit the
-              table in a 1280px screen's content area. */}
-          <table className="w-full min-w-240 table-fixed border-collapse">
-            <colgroup>
-              <col className="w-52" />
-
-              {shownDates.map((date) => (
-                <col
-                  key={toISODate(date)}
-                  className={cn(isWeekend(date) && "w-22")}
-                />
-              ))}
-
-              <col className="w-32" />
-            </colgroup>
-
-            <thead>
-              <tr className="border-b border-border bg-muted/10">
-                <th
-                  scope="col"
-                  aria-sort={sort.key === "name" ? ariaSort : undefined}
-                  className={cn(STICKY_PERSON_CELL, "p-2 text-left align-top")}
-                >
-                  <SortableHeading
-                    label="Person"
-                    sortKey="name"
-                    sort={sort}
-                    onSort={sortBy}
-                  />
-                </th>
-
-                {shownDates.map((date) => (
-                  <th
-                    key={toISODate(date)}
-                    scope="col"
-                    // Top-aligned, so Sunday's fold control under its date
-                    // leaves every day on one line.
-                    className="border-r border-border/60 p-0 align-top"
-                  >
-                    <WeekHeaderDay
-                      date={date}
-                      isToday={toISODate(date) === todayIso}
-                      isLocked={isLocked(toISODate(date))}
-                      action={
-                        date === shownDates.at(-1) && (
-                          <WeekendToggle
-                            isShown={showsWeekend}
-                            canHide={!hasWeekendTime}
-                            onChange={setIsWeekendWanted}
-                          />
-                        )
-                      }
-                    />
-                  </th>
-                ))}
-
-                <th
-                  scope="col"
-                  aria-sort={sort.key === "total" ? ariaSort : undefined}
-                  className="p-2 pr-3 align-top"
-                >
-                  <SortableHeading
-                    label="Logged"
-                    sortKey="total"
-                    sort={sort}
-                    onSort={sortBy}
-                    alignEnd
-                  />
-                </th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {shownRows.map((row) => (
-                <TeamWeekRow
-                  key={row.user.id}
-                  row={row}
-                  weekDates={shownDates}
-                  todayIso={todayIso}
-                  absencesByDate={absencesByUser[row.user.id] ?? {}}
-                  plansByDate={plansByUser[row.user.id] ?? {}}
-                  isLocked={isLocked}
-                  isEditable={isEditable}
-                  projectName={projectName}
-                  canWrite={canWriteTimeLogsFor(role, viewerId, row.user.id)}
-                  isHighlighted={row.user.id === highlightedPersonId}
-                  busyDate={
-                    pendingEntryForm?.user.id === row.user.id
-                      ? pendingEntryForm.date
-                      : undefined
-                  }
-                  onEditEntry={(timelog) =>
-                    void openEntryForm({
-                      user: row.user,
-                      date: timelog.date,
-                      timelog,
-                    })
-                  }
-                  onAdd={(date, plannedProjectId) =>
-                    openCreate(row.user, date, plannedProjectId)
-                  }
-                  onAbsenceClick={(absence) =>
-                    setAbsenceForm({
-                      user: row.user,
-                      date: absence.startDate,
-                      absence,
-                    })
-                  }
-                  onAddDayAbsence={(date) =>
-                    setAbsenceForm({ user: row.user, date, isSingleDay: true })
-                  }
-                />
-              ))}
-            </tbody>
-          </table>
-        </div>
+          {shownRows.map((row) => (
+            <TeamWeekRow
+              key={row.user.id}
+              row={row}
+              weekDates={shownDates}
+              todayIso={todayIso}
+              absencesByDate={absencesByUser[row.user.id] ?? {}}
+              plansByDate={plansByUser[row.user.id] ?? {}}
+              isLocked={isLocked}
+              isEditable={isEditable}
+              projectName={projectName}
+              canWrite={canWriteTimeLogsFor(role, viewerId, row.user.id)}
+              isHighlighted={row.user.id === highlightedPersonId}
+              busyDate={
+                pendingEntryForm?.user.id === row.user.id
+                  ? pendingEntryForm.date
+                  : undefined
+              }
+              onEditEntry={(timelog) =>
+                void openEntryForm({
+                  user: row.user,
+                  date: timelog.date,
+                  timelog,
+                })
+              }
+              onAdd={(date, plannedProjectId) =>
+                openCreate(row.user, date, plannedProjectId)
+              }
+              onAbsenceClick={(absence) =>
+                setAbsenceForm({
+                  user: row.user,
+                  date: absence.startDate,
+                  absence,
+                })
+              }
+              onAddDayAbsence={(date) =>
+                setAbsenceForm({ user: row.user, date, isSingleDay: true })
+              }
+            />
+          ))}
+        </PeopleGridTable>
       )}
 
       <NonWorkDayConfirm

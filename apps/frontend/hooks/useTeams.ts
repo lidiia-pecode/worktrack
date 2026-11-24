@@ -29,8 +29,6 @@ const teamsQueries = createEntityQuery<Team, TeamQueryParams>({
   },
 });
 
-export const useTeamsQuery = teamsQueries.useQuery;
-
 export const useTeamsInfiniteQuery = teamsQueries.useInfiniteQuery;
 
 /**

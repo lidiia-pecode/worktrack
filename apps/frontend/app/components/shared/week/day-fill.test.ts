@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { EXCESS_DAY_FILL } from "../consts";
+import { EXCESS_DAY_FILL } from "./day-styles";
 import { dayFill } from "./day-fill";
 
 describe("dayFill", () => {
