@@ -199,7 +199,8 @@ values, and admin CRUD — for reporting nobody has asked for yet.
 typed identically every time; a typo silently splits one client in two. If
 reliable client-level reporting becomes a requirement — most likely if WorkTrack
 is ever extended to other businesses — promoting clients to an entity is the
-correct move at that point, not before.
+correct move at that point, not before. A project's client is also read as it
+is now: renaming it changes the client shown on past time too.
 
 ### D9 — Time-log write access follows read visibility
 
@@ -531,7 +532,7 @@ Every write is checked on the server:
    or week left over by a later absence or a lowered capacity is kept (a week
    over is flagged "Over by", below) and can always be reduced.
 6. Nothing can be planned on a day the person wasn't employed, as for time
-   entries (rule 4 there).
+   entries (check 4 there).
 
 Plans are written in one way only, a period save, a single day being a period
 of one day, and removed per project across a period, never one by one. A day a
@@ -541,7 +542,8 @@ period plans only what is left, filling its projects in order, the last ones
 giving way — one left no room loses the plan it had there — and its preview
 names the day. Recording a whole-day absence, or
 widening or moving one, deletes that person's plans on its days, whoever records it — the
-person themselves included, though they cannot write planning otherwise.
+person themselves included, though they cannot write planning otherwise. The
+absence form waits until it knows which plans it removes, and says so.
 Plans on its days in a locked month stay, as those days do, and deleting or
 shortening an absence brings nothing back. Whoever changed each removed plan
 last, or made it when nobody did, is told in-app, unless they recorded the
@@ -648,7 +650,7 @@ the day after their last working day to the day before their first day back
 what keeps a full week away at exactly zero and a full week present at exactly
 that person's capacity, for a part-timer as well as a full-timer. It returns
 `total` for the whole range, `toDate` counting only days that have finished in
-the company's timezone, which Reports' People card measures against, and a
+the company's timezone, which Reports' People table measures against, and a
 figure for every date, which the timesheet draws each day's line and over-target
 warning from. A day expects nothing on a weekend, a whole-day absence or before the
 account was created. The days are rounded along a running total, so they always
@@ -862,7 +864,7 @@ the team and project panels say "Last day" and the date after their position.
 | Planning — write, a period (a day is a period of one day), and its preview | any active user | self + managed users | — |
 | Reporting periods | reopen + close | read | read |
 | Hours and people reports | whole company | own, plus users in teams they manage | own only, through the same routes |
-| Working hours | a person's hours and the company's standard day: set, schedule and cancel a change | own expected hours only | own expected hours only |
+| Working hours | a person's hours and the company's standard day: set, schedule and cancel a change | reads own expected hours; their team's come with Team time and Reports | reads own expected hours |
 | Setup wizard and checklist | theirs alone | — | — |
 | Hours export, timeline | whole company | own, plus users in teams they manage | — |
 
@@ -956,7 +958,8 @@ largest screens, have sections of their own after the list.
   as on Planning. Saturday and Sunday are left out unless someone shown has
   time on one, and open from Friday's heading. They correct the week in the
   grid: a chip opens that entry, the empty part of a day logs time for the
-  person ("No time" on an empty past working day), and an absence is added
+  person ("No time" on an empty past working day; for someone on no project
+  the form points to Projects), and an absence is added
   from a day: from its Log time form, or from a day still to come. A search by name
   or position, a sort by name or by how
   much of the expected time is logged, and filters by team and project

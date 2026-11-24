@@ -51,8 +51,9 @@ stripes as a whole day off, its hours only in the tooltip.
 ("from Wed 2 Dec to Wed 2 Dec"), and "A day cannot be both worked and absent"
 is not true of part of a day.
 
-**An absence steps by 5 minutes, a plan by 15** — _limitation._ On a day
-2h 10m away, a period plans 5h 45m of the 5h 50m left.
+**An absence steps by 5 minutes, a plan by 15** — _limitation._ The absence
+form steps by 5 minutes (the API takes any whole minute) and a plan by 15, so
+on a day 2h 10m away a period plans 5h 45m of the 5h 50m left.
 
 **An absence around locked months that aren't next to each other** — _UX,
 low._ An absence's locked part is taken as one span from its first locked day
@@ -203,10 +204,10 @@ also read "today" twice, once per sheet.
 ## Periods, setup and settings
 
 **The grace period is a fixed seven days, and a month cannot be closed
-early** — _limitation._ A month invoiced on the 3rd stays editable until the
-8th (`GRACE_DAYS`). A configurable grace needs a rule for when a change
-applies, since locks are worked out from it and would lock or unlock past
-months at once.
+early** — _limitation._ A month invoiced on the 3rd stays editable through
+the 7th of the next month (`GRACE_DAYS`). A configurable grace needs a rule
+for when a change applies, since locks are worked out from it and would lock
+or unlock past months at once.
 
 **Periods lists months back to the company's first only** — _limitation._
 Time can be logged on any past date, so a month before the company existed
@@ -268,11 +269,11 @@ Google sign-in URLs. The nightly clean-up of sessions and tokens runs only
 while the backend is awake, and Google sign-in from a preview deployment ends
 on the stand's frontend, because the callback URL is fixed.
 
-**A backend outage looks like a sign-out** — _UX._ When the backend can't be
-reached, `getCurrentUser()` returns `null`, so a page shows no sidebar or the
-landing page, or the plain "Something went wrong". The fix: a "Can't reach
-WorkTrack, you're still signed in" page that retries, and `null` only on a
-401.
+**A backend outage looks like a sign-out** — _UX._ When the backend answers
+with an error, as while it wakes, `getCurrentUser()` returns `null`, so a page
+shows no sidebar or the landing page; when it can't be reached at all, the
+page is the plain "Something went wrong". The fix: a "Can't reach WorkTrack,
+you're still signed in" page that retries, and `null` only on a 401.
 
 **Calls to the backend have no timeout** — _reliability._ `proxy.ts` and the
 server-side reads wait as long as the backend takes. A timeout is safe on the
@@ -312,7 +313,7 @@ An unknown address answers 404; sign-up and Google sign-in tell the same.
 Decide for all three together: one answer whatever the address.
 
 **Production defaults that rely on the host** — _security, low._ Swagger is
-served unless `NODE_ENV=production`, and `AUTH_COOKIE_SECURE` defaults to off,
+served unless `NODE_ENV=production` or `ENABLE_SWAGGER=false`, and `AUTH_COOKIE_SECURE` defaults to off,
 so a host that forgets either publishes the API description or sends cookies
 over plain HTTP. Fix: refuse to start in production without them.
 
