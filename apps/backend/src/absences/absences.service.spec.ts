@@ -283,8 +283,16 @@ describe('AbsencesService', () => {
     await dataSource.destroy();
   });
 
-  /** A 4h plan written straight to the table, as made by `authorId`. */
-  const planBy = (authorId: string, userId: string, date: string) =>
+  /**
+   * A 4h plan written straight to the table, as made by `authorId` and, when
+   * given, last changed by `changedById`.
+   */
+  const planBy = (
+    authorId: string,
+    userId: string,
+    date: string,
+    changedById?: string,
+  ) =>
     dataSource.getRepository(PlanningEntry).save({
       companyId,
       userId,
@@ -292,6 +300,7 @@ describe('AbsencesService', () => {
       date,
       plannedMinutes: 240,
       createdById: authorId,
+      updatedById: changedById,
     });
 
   const noticesFor = (recipientId: string) =>
@@ -896,6 +905,15 @@ describe('AbsencesService', () => {
         projects: [{ name: `Project ${RUN}`, minutes: 480 }],
       });
       expect(await noticesFor(member.id)).toEqual([]);
+    });
+
+    it('tells whoever changed a plan last, not its author', async () => {
+      await planBy(owner.id, member.id, START, manager.id);
+
+      await service.create(absenceFor(member.id), member);
+
+      expect(await noticesFor(manager.id)).toHaveLength(1);
+      expect(await noticesFor(owner.id)).toEqual([]);
     });
 
     it('never tells whoever recorded the absence', async () => {

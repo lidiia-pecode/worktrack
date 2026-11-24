@@ -57,6 +57,14 @@ export class PlanningEntry {
   })
   createdById?: string;
 
+  /** Who last changed its hours; null while nobody has. */
+  @Column({
+    type: 'uuid',
+    name: 'updated_by_id',
+    nullable: true,
+  })
+  updatedById?: string | null;
+
   @Column({
     type: 'date',
     nullable: false,
@@ -119,4 +127,11 @@ export class PlanningEntry {
   })
   @JoinColumn({ name: 'created_by_id' })
   createdBy?: User;
+
+  @ManyToOne(() => User, {
+    nullable: true,
+    onDelete: 'SET NULL',
+  })
+  @JoinColumn({ name: 'updated_by_id' })
+  updatedBy?: User;
 }

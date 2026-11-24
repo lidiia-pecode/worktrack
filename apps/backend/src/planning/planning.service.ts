@@ -550,6 +550,7 @@ export class PlanningService {
         ),
         ...writes.changed.map(({ entry, minutes }) => {
           entry.plannedMinutes = minutes;
+          entry.updatedById = user.id;
           return entry;
         }),
       ]);

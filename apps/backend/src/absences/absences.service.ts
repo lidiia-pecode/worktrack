@@ -51,10 +51,13 @@ export interface AbsenceDayRoom {
   plannedMinutes: number;
 }
 
-/** A plan an absence removed, with who made it, for telling them. */
+/**
+ * A plan an absence removed, with who planned it — whoever changed it last,
+ * or its author when nobody did — for telling them.
+ */
 interface RemovedPlan {
   id: string;
-  authorId: string | null;
+  plannerId: string | null;
   projectName: string;
   minutes: number;
   date: string;
@@ -268,7 +271,7 @@ export class AbsencesService {
       });
 
       const saved = await manager.save(entity);
-      await this.tellPlanAuthors(manager, ownerId, user, removedPlans);
+      await this.tellPlanners(manager, ownerId, user, removedPlans);
       return saved;
     });
   }
@@ -360,7 +363,7 @@ export class AbsencesService {
           : [];
 
       const saved = await manager.save(Absence, absence);
-      await this.tellPlanAuthors(manager, ownerId, user, removedPlans);
+      await this.tellPlanners(manager, ownerId, user, removedPlans);
       return saved;
     });
   }
@@ -705,7 +708,7 @@ export class AbsencesService {
     const query = manager
       .createQueryBuilder()
       .select('p.id', 'id')
-      .addSelect('p.created_by_id', 'authorId')
+      .addSelect('COALESCE(p.updated_by_id, p.created_by_id)', 'plannerId')
       .addSelect('project.name', 'projectName')
       .addSelect('p.planned_minutes', 'minutes')
       .addSelect(`TO_CHAR(p.date, 'YYYY-MM-DD')`, 'date')
@@ -738,39 +741,39 @@ export class AbsencesService {
   }
 
   /**
-   * Tells each author of the removed plans, except whoever recorded the
-   * absence, about those on days they can still read for the person, so a
-   * notice never reaches past their teams. An author who has left, or reaches
+   * Tells whoever planned the removed plans (see `RemovedPlan`), except
+   * whoever recorded the absence, about those on days they can still read for
+   * the person, so a notice never reaches past their teams. Someone who has left, or reaches
    * none of those days, is told nothing; the absence's type is never named.
    */
-  private async tellPlanAuthors(
+  private async tellPlanners(
     manager: EntityManager,
     ownerId: string,
     recorder: AuthUser,
     removed: RemovedPlan[],
   ): Promise<void> {
-    const authorIds = [
+    const plannerIds = [
       ...new Set(
         removed
-          .map((plan) => plan.authorId)
+          .map((plan) => plan.plannerId)
           .filter((id): id is string => id !== null && id !== recorder.id),
       ),
     ];
-    if (authorIds.length === 0) return;
+    if (plannerIds.length === 0) return;
 
-    const authors = await manager.find(User, {
+    const planners = await manager.find(User, {
       where: {
-        id: In(authorIds),
+        id: In(plannerIds),
         companyId: recorder.companyId,
         status: UserStatus.ACTIVE,
       },
       select: ['id', 'email', 'companyId', 'role'],
     });
 
-    for (const author of authors) {
-      const theirs = removed.filter((plan) => plan.authorId === author.id);
+    for (const planner of planners) {
+      const theirs = removed.filter((plan) => plan.plannerId === planner.id);
       const dates = theirs.map((plan) => plan.date).sort();
-      const inView = await this.teamVisibility.daysInView(author, [ownerId], {
+      const inView = await this.teamVisibility.daysInView(planner, [ownerId], {
         from: dates[0],
         to: dates[dates.length - 1],
       });
@@ -782,7 +785,7 @@ export class AbsencesService {
 
       await this.notifications.notifyPlansRemoved(manager, {
         companyId: recorder.companyId,
-        recipientId: author.id,
+        recipientId: planner.id,
         subjectUserId: ownerId,
         details: summarisePlans(reached),
       });

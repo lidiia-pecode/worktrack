@@ -652,6 +652,26 @@ describe('PlanningService', () => {
       });
     });
 
+    it('records who changed a plan, beside who made it', async () => {
+      await service.planPeriod(
+        period(MONDAY, MONDAY, [{ projectId, minutesPerDay: 2 * HOUR }]),
+        owner,
+      );
+      await service.planPeriod(
+        period(MONDAY, MONDAY, [{ projectId, minutesPerDay: 5 * HOUR }]),
+        manager,
+      );
+
+      await expect(
+        dataSource
+          .getRepository(PlanningEntry)
+          .findOneByOrFail({ companyId, userId: member.id, date: MONDAY }),
+      ).resolves.toMatchObject({
+        createdById: owner.id,
+        updatedById: manager.id,
+      });
+    });
+
     it('changes a listed project only on the days that already have it', async () => {
       await existingEntry(member.id, MONDAY, 2 * HOUR);
       await existingEntry(member.id, WEDNESDAY, 2 * HOUR);
