@@ -1,4 +1,3 @@
-// src/lib/decorators/current-user.decorator.ts
 import { createParamDecorator, ExecutionContext } from '@nestjs/common';
 import { AuthContext, AuthUser } from 'src/auth/auth-strategies/types';
 

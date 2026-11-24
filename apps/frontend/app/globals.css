@@ -43,8 +43,7 @@
  * color is explicitly set to a matching darker shade. It provides
  * 5.6:1 contrast on the card and 5.1:1 on --warning-subtle.
  *
- * :root = light theme
- * TODO: dark theme
+ * :root = light theme. There is no dark theme.
  ========================================================================== */
 
 :root {

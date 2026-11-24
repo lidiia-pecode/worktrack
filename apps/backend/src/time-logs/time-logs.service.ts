@@ -467,7 +467,6 @@ export class TimeLogsService {
       await lockUser(manager, ownerId, user.companyId);
       const log = await this.getLogForUpdate(id, user.companyId, manager);
 
-      // Reporting Period Check
       await this.assertDateNotLocked(manager, user.companyId, log.date);
 
       await manager.remove(TimeLog, log);

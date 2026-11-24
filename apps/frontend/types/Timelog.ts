@@ -6,8 +6,7 @@ import { UserName } from "./User";
 
 /**
  * Mirrors the backend `TimeLogResponse` DTO. Fields the API never serializes
- * (companyId, projectActivityId, company, user) are intentionally absent — the
- * type used to claim them, which made them look safe to read.
+ * (companyId, projectActivityId, company, user) are absent on purpose.
  */
 export interface TimeLog {
   id: string;

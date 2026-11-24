@@ -1,4 +1,3 @@
-// src/companies/dtos/company-response.dto.ts
 import { Expose, Type } from 'class-transformer';
 import { CompanyStatus } from '../enums/company-status.enum';
 import { WeekDay } from '../enums/week-day.enum';

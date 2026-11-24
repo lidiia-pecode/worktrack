@@ -44,10 +44,6 @@ export class ReportingController {
     return this.reportingService.closeMonth(user.companyId, month, user.id);
   }
 
-  // ==========================================
-  // ANALYTICS & DASHBOARDS
-  // ==========================================
-
   @Get('hours')
   getHoursReport(
     @CurrentUser() user: AuthUser,

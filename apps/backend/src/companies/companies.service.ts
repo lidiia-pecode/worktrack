@@ -164,28 +164,6 @@ export class CompaniesService {
     return company;
   }
 
-  async ensureCompanyIsActive(
-    companyId: string,
-    manager?: EntityManager,
-  ): Promise<Company> {
-    const company = await this.findById(companyId, manager);
-
-    if (company.status === CompanyStatus.SUSPENDED) {
-      throw new ForbiddenException('Company account is suspended.');
-    }
-
-    return company;
-  }
-
-  async findBySlug(
-    slug: string,
-    manager?: EntityManager,
-  ): Promise<Company | null> {
-    return this.getRepository(manager).findOne({
-      where: { slug },
-    });
-  }
-
   async update(
     companyId: string,
     dto: UpdateCompanyDto,

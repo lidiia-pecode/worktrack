@@ -74,7 +74,7 @@ const listOf = (names: string[]) => {
 /**
  * While the month runs, missing time counts only for weeks that have ended,
  * since many people log their week on Friday: up to the last Friday on or
- * before the last counted day. A finished month counts every day (Decision 35).
+ * before the last counted day. A finished month counts every day.
  */
 export const lastCheckedDay = (countedUntil: string) => {
   let day = fromISODate(countedUntil);
@@ -138,8 +138,7 @@ const daysWithoutTimeFact = (
  * How far a project is off its plan, or all its time when it has none; 0 when
  * it needs no attention. Unplanned time counts only on a client project, since
  * internal work is often left unplanned on purpose; while the month runs, only
- * time over the plan counts, since late logging only lowers logged time
- * (Decision 36).
+ * time over the plan counts, since late logging only lowers logged time.
  */
 const offPlanGap = (
   { totalMinutes, plannedMinutes, detail: client }: HoursReportRow,
@@ -202,7 +201,7 @@ const projectsOffPlanFact = (
  * problem — missing time first, then the plans — with the people and projects
  * it names, so a dot beside a row always matches the section. Nothing is
  * about someone logging less than expected (D3), and a plan beyond someone's
- * hours is left to Planning (Decision 37).
+ * hours is left to Planning.
  */
 export const reportAttention = ({
   people,
@@ -241,7 +240,7 @@ export const reportAttention = ({
   };
 };
 
-/** Nothing marked, for a locked month (Decision 34). */
+/** Nothing marked, for a locked month. */
 export const NO_ATTENTION: ReportAttention = {
   facts: [],
   people: new Map(),

@@ -1,4 +1,3 @@
-// apps/backend/src/auth/entities/auth-session.entity.ts
 import { Company } from 'src/companies/entities/company.entity';
 import { User } from 'src/users/entities/user.entity';
 import {

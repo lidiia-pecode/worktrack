@@ -12,8 +12,8 @@ export interface PeriodWeek {
 }
 
 /**
- * Plans are made in quarter hours, so a person's day, whole half-hours since
- * Phase 41 (decision 6), can always be filled exactly.
+ * Plans are made in quarter hours, so a person's day, always whole
+ * half-hours, can be filled exactly.
  */
 export const PLAN_MINUTES_STEP = 15;
 /** No plan can be longer than a day. */

@@ -159,7 +159,7 @@ export class TeamsService {
   }
 
   /**
-   * A person is in one team at a time (P1): joining another is a move, which
+   * A person is in one team at a time: joining another is a move, which
    * the caller has to ask for. Someone who leads their team stays until it has
    * another manager, so no team loses its lead as a side effect.
    */

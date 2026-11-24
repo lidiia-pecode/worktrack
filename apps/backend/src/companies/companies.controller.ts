@@ -1,4 +1,3 @@
-// src/companies/companies.controller.ts
 import {
   Body,
   Controller,

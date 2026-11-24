@@ -173,8 +173,6 @@ export class UsersService {
     }
   }
 
-  // Multi-Tenant Business API
-
   async list(
     companyId: string,
     query: UsersQuery,

@@ -640,7 +640,7 @@ export class PlanningService {
     );
     const partAbsenceOn = partAbsences.get(userId) ?? new Map<string, number>();
     // A partly absent day takes the lines in what its plans on other
-    // projects leave of it (decision 16).
+    // projects leave of it.
     const roomOn = (date: string) => {
       if (!partAbsenceOn.has(date)) return undefined;
       const onOtherProjects = existing
@@ -913,8 +913,8 @@ export class PlanningService {
 
   /**
    * The most each person can be planned on a day: their working hours a week
-   * on that date over five, the day their expected hours count (Decision 5,
-   * Phase 41), or the company's standard day when they have none of their own,
+   * on that date over five, the day their expected hours count, or the
+   * company's standard day when they have none of their own,
    * less the part of it they are away.
    */
   private async dayLimitsFor(

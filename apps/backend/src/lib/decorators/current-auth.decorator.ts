@@ -1,4 +1,3 @@
-// src/lib/decorators/current-auth.decorator.ts
 import {
   createParamDecorator,
   ExecutionContext,

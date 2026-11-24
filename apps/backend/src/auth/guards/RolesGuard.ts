@@ -1,5 +1,3 @@
-// apps/backend/src/auth/guards/RolesGuard.ts
-
 import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { ROLES_KEY } from 'src/lib/decorators';

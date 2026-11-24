@@ -8,7 +8,7 @@ import { IsDateWithoutTimeString } from 'src/lib/validators/IsDateWithoutTimeStr
 
 const MIN_STANDARD_DAY_MINUTES = 60;
 
-/** 1h to 12h in 30-minute steps, as a person's working day (decision 6, Phase 41). */
+/** 1h to 12h in 30-minute steps, as a person's working day. */
 const STANDARD_DAY_HOURS = Array.from(
   {
     length:

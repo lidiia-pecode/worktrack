@@ -1,5 +1,3 @@
-// apps/backend/src/auth/entities/google-link-token.entity.ts
-
 import {
   Column,
   CreateDateColumn,

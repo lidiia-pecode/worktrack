@@ -1,5 +1,3 @@
-// apps/backend/src/auth/auth-strategies/google.ts
-
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';

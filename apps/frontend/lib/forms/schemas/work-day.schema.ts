@@ -2,8 +2,8 @@ import { z } from "zod";
 
 /**
  * A working day, a person's or the company's standard one: whole half-hours up
- * to 12h, so the day expected and planned is never an odd minute (decision 6,
- * Phase 41). A week is five of them.
+ * to 12h, so the day expected and planned is never an odd minute. A week is
+ * five of them.
  */
 export const MAX_WORK_DAY_HOURS = 12;
 export const WORK_DAY_STEP_HOURS = 0.5;

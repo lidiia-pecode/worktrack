@@ -26,6 +26,9 @@ async function run() {
     console.log(
       `🌱 Seeding "${COMPANY.companyName}" for ${SEED_TODAY}${INCLUDE_TEST_CASES ? ', with the test-only cases' : ''}...`,
     );
+    // Errors only, so the logins printed at the end stay on screen. A list,
+    // because TypeORM ignores `logging: false` here.
+    AppDataSource.setOptions({ logging: ['error', 'warn'] });
     await AppDataSource.initialize();
 
     const companyId = await seedCompanies(AppDataSource);

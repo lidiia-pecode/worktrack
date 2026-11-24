@@ -43,7 +43,7 @@ export interface ProjectArchiveImpact {
   planCount: number;
 }
 
-// ProjectPayload = back
+/** Mirrors the backend `ProjectPayload`. */
 export interface ProjectPayload {
   name: string;
   clientName?: string | null;

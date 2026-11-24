@@ -1,4 +1,4 @@
-/** Plans are made in quarter hours, as the API requires (Phase 41). */
+/** Plans are made in quarter hours, as the API requires. */
 export const PLAN_MINUTE_STEP = 15;
 
 export const isOnPlanStep = (minutes: number) =>
