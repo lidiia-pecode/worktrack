@@ -1,7 +1,10 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
+
 import {
   Absence,
+  AbsenceDayQuery,
   AbsenceDeleteResult,
   AbsencePayload,
   AbsencesQuery,
@@ -60,6 +63,18 @@ export const useAbsencesMutations = createEntityMutations<
       trimmed ? "Open days removed" : "Absence deleted",
   },
 });
+
+/** A person's day for the absence form: working, logged and planned time. */
+export function useAbsenceDay(
+  { date, userId }: AbsenceDayQuery,
+  enabled: boolean,
+) {
+  return useQuery({
+    queryKey: queryKeys.absences.day(date, userId),
+    queryFn: () => AbsencesClientApi.getDay({ date, userId }),
+    enabled,
+  });
+}
 
 export function useAbsences(params?: AbsenceQueryParams) {
   const query = useAllAbsencesQuery(params);

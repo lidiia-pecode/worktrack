@@ -1,9 +1,9 @@
 "use client";
 
 import { Ref, useEffect, useRef } from "react";
-import { Lock, Plus } from "lucide-react";
+import { CalendarOff, Lock, Plus } from "lucide-react";
 
-import { PlanningEntry, TimeLog } from "@/types";
+import { Absence, PlanningEntry, TimeLog } from "@/types";
 import { cn } from "@/lib/utils/cn";
 import {
   formatDayMonthLabel,
@@ -13,7 +13,7 @@ import {
   isWeekend,
   toISODate,
 } from "@/lib/utils/date";
-import { ABSENCE_TYPE_LABELS } from "@/lib/utils/absence";
+import { ABSENCE_TYPE_LABELS, isPartDayAbsence } from "@/lib/utils/absence";
 import {
   entryTint,
   getProjectColor,
@@ -24,6 +24,7 @@ import { changedByText } from "@/lib/utils/user";
 
 import { Badge } from "@/components/ui/badge";
 
+import { ABSENCE_PATTERN } from "../consts";
 import { dayFill } from "../helpers/day-fill";
 import { TimesheetDay, dayActions } from "../helpers/day-state";
 
@@ -39,6 +40,8 @@ type WeekDayListProps = {
   /** With a project when it comes from that project's plan. */
   onAddClick: (date: Date, projectId?: string) => void;
   onAbsenceClick: (date: Date) => void;
+  /** A working day still to come, taken off from the day itself. */
+  onAddAbsenceClick: (date: Date) => void;
   onEntryClick: (timelog: TimeLog) => void;
 };
 
@@ -54,6 +57,7 @@ export const WeekDayList = ({
   className,
   onAddClick,
   onAbsenceClick,
+  onAddAbsenceClick,
   onEntryClick,
 }: WeekDayListProps) => {
   const todayRef = useRef<HTMLElement>(null);
@@ -79,6 +83,7 @@ export const WeekDayList = ({
             isToday={iso === todayIso}
             onAddClick={onAddClick}
             onAbsenceClick={onAbsenceClick}
+            onAddAbsenceClick={onAddAbsenceClick}
             onEntryClick={onEntryClick}
           />
         );
@@ -89,7 +94,7 @@ export const WeekDayList = ({
 
 type DayRowProps = Pick<
   WeekDayListProps,
-  "onAddClick" | "onAbsenceClick" | "onEntryClick"
+  "onAddClick" | "onAbsenceClick" | "onAddAbsenceClick" | "onEntryClick"
 > & {
   ref?: Ref<HTMLElement>;
   day: TimesheetDay;
@@ -102,17 +107,20 @@ const DayRow = ({
   isToday,
   onAddClick,
   onAbsenceClick,
+  onAddAbsenceClick,
   onEntryClick,
 }: DayRowProps) => {
   const { date, absence, timelogs, plannedEntries, totalMinutes } = day;
-  const { opensAbsence, canAddEntry, showsPlan } = dayActions(day);
+  const { opensAbsence, canAddEntry, canAddAbsence, showsPlan } =
+    dayActions(day);
+  const isWholeDayOff = !!absence && !isPartDayAbsence(absence);
   const weekend = isWeekend(date);
   const longLabel = formatLongDayLabel(date);
   const label = `${formatWeekdayLabel(date)} ${formatDayMonthLabel(toISODate(date))}`;
 
   const fill =
     dayFill({
-      isAbsent: Boolean(absence),
+      isAbsent: isWholeDayOff,
       isWeekend: weekend,
       minutes: totalMinutes,
     }) ??
@@ -150,7 +158,7 @@ const DayRow = ({
     </span>
   );
 
-  if (absence) {
+  if (absence && isWholeDayOff) {
     const absenceContent = (
       <>
         {/* The button's name already says which day. */}
@@ -218,7 +226,28 @@ const DayRow = ({
             <Plus className="size-5" aria-hidden />
           </button>
         )}
+        {canAddAbsence && (
+          <button
+            type="button"
+            aria-label={`Add an absence on ${longLabel}`}
+            onClick={() => onAddAbsenceClick(date)}
+            className={cn(
+              "-mr-2 flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-hover",
+              FOCUS_RING,
+            )}
+          >
+            <CalendarOff className="size-5" aria-hidden />
+          </button>
+        )}
       </div>
+
+      {absence && (
+        <PartAbsenceRow
+          absence={absence}
+          dayLabel={longLabel}
+          onClick={opensAbsence ? () => onAbsenceClick(date) : undefined}
+        />
+      )}
 
       {showsPlan &&
         plannedEntries.map((plan) => (
@@ -389,6 +418,49 @@ const EntryRow = ({
         FOCUS_RING,
       )}
       style={style}
+    >
+      {content}
+    </button>
+  );
+};
+
+/** Part of a day away, striped as a day off is, its hours like an entry's. */
+const PartAbsenceRow = ({
+  absence,
+  dayLabel,
+  onClick,
+}: {
+  absence: Absence;
+  dayLabel: string;
+  onClick?: () => void;
+}) => {
+  const className = cn(ROW_CLASS, "items-center", ABSENCE_PATTERN);
+  const content = (
+    <>
+      <span className="w-14 shrink-0 font-semibold text-foreground">
+        {formatDuration(absence.minutes ?? 0)}
+      </span>
+      <span className="flex min-w-0 flex-col items-start gap-1">
+        <span className="rounded-full border border-border bg-card px-2 py-0.5 text-xs font-semibold text-foreground">
+          {ABSENCE_TYPE_LABELS[absence.type]}
+        </span>
+        {absence.note && (
+          <span className="break-words text-xs text-muted-foreground">
+            {absence.note}
+          </span>
+        )}
+      </span>
+    </>
+  );
+
+  if (!onClick) return <div className={className}>{content}</div>;
+
+  return (
+    <button
+      type="button"
+      aria-label={`Edit the absence on ${dayLabel}: ${ABSENCE_TYPE_LABELS[absence.type]}, ${formatDuration(absence.minutes ?? 0)}`}
+      onClick={onClick}
+      className={cn(className, "cursor-pointer", FOCUS_RING)}
     >
       {content}
     </button>

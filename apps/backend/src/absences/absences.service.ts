@@ -24,18 +24,29 @@ import type { PlansRemovedDetails } from 'src/notifications/entities/notificatio
 import { ReportingService } from 'src/reporting/reporting.service';
 import { CapacityService } from 'src/capacity/capacity.service';
 import {
-  SPLIT_AROUND_WEEKEND,
   addDays,
   isWorkingDay,
+  weekendWorkHint,
 } from 'src/capacity/working-days.util';
+import { formatDay } from 'src/lib/utils/format-day.util';
+import { formatMinutes } from 'src/lib/utils/format-minutes.util';
+import { MAX_RANGE_DAYS } from 'src/reporting/date-range.util';
 import { lastDayOfMonth } from 'src/reporting/reporting-months.util';
 import {
   AbsencePayload,
   UpdateAbsencePayload,
 } from './dtos/absence-payload.dto';
-import { AbsencesQuery } from './dtos/absences-query.dto';
+import { AbsenceDayQuery, AbsencesQuery } from './dtos/absences-query.dto';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 import { pageOffset } from 'src/lib/dtos/pagination-query.dto';
+
+/** A person's day as the absence form measures part of it. */
+export interface AbsenceDay {
+  date: string;
+  workingMinutes: number;
+  loggedMinutes: number;
+  plannedMinutes: number;
+}
 
 /** A plan an absence removed, with who made it, for telling them. */
 interface RemovedPlan {
@@ -156,6 +167,40 @@ export class AbsencesService {
     }
   }
 
+  /**
+   * What a day holds for someone, for the absence form to measure part of it
+   * against: their working day, the time logged and the time planned. Read
+   * with the absence write scope, since only who records one needs it.
+   */
+  async dayFor(query: AbsenceDayQuery, user: AuthUser): Promise<AbsenceDay> {
+    const ownerId = query.userId ?? user.id;
+    const { date } = query;
+    await this.assertCanWriteFor(ownerId, user, { from: date, to: date });
+
+    const manager = this.dataSource.manager;
+    const [workingMinutes, loggedMinutes, plannedMinutes] = await Promise.all([
+      this.workingMinutesOn(user.companyId, ownerId, date),
+      this.sumMinutesOn(
+        manager,
+        'time_logs',
+        'minutes',
+        user.companyId,
+        ownerId,
+        date,
+      ),
+      this.sumMinutesOn(
+        manager,
+        'planning_entries',
+        'planned_minutes',
+        user.companyId,
+        ownerId,
+        date,
+      ),
+    ]);
+
+    return { date, workingMinutes, loggedMinutes, plannedMinutes };
+  }
+
   // ==========================================
   // WRITE
   // ==========================================
@@ -167,7 +212,8 @@ export class AbsencesService {
       to: payload.endDate,
     });
 
-    this.assertRangeOrder(payload.startDate, payload.endDate);
+    const minutes = payload.minutes ?? null;
+    this.assertRange(payload.startDate, payload.endDate, minutes);
 
     return this.dataSource.transaction(async (manager) => {
       await this.lockUser(manager, ownerId, user.companyId);
@@ -190,14 +236,19 @@ export class AbsencesService {
         user.companyId,
         payload.startDate,
         payload.endDate,
+        minutes === null ? null : { minutes, recheck: true },
       );
-      const removedPlans = await this.removePlansOn(
-        manager,
-        ownerId,
-        user.companyId,
-        payload.startDate,
-        payload.endDate,
-      );
+      // Part of a day keeps the day's plans; a whole day takes them off.
+      const removedPlans =
+        minutes === null
+          ? await this.removePlansOn(
+              manager,
+              ownerId,
+              user.companyId,
+              payload.startDate,
+              payload.endDate,
+            )
+          : [];
 
       const entity = manager.create(Absence, {
         companyId: user.companyId,
@@ -205,6 +256,7 @@ export class AbsencesService {
         type: payload.type,
         startDate: payload.startDate,
         endDate: payload.endDate,
+        minutes,
         note: payload.note,
         createdById: user.id,
       });
@@ -229,7 +281,19 @@ export class AbsencesService {
 
       const startDate = payload.startDate ?? absence.startDate;
       const endDate = payload.endDate ?? absence.endDate;
-      this.assertRangeOrder(startDate, endDate);
+      const minutes =
+        payload.minutes === undefined ? absence.minutes : payload.minutes;
+      const moved =
+        startDate !== absence.startDate || endDate !== absence.endDate;
+      const isUnchanged =
+        !moved &&
+        minutes === absence.minutes &&
+        (payload.type === undefined || payload.type === absence.type) &&
+        (payload.note === undefined || payload.note === (absence.note ?? null));
+      // Nothing to save, so "Changed by" stays with whoever last changed it.
+      if (isUnchanged) return absence;
+
+      this.assertRange(startDate, endDate, minutes);
 
       const lockedDays = await this.assertLockedDaysKept(
         manager,
@@ -238,13 +302,11 @@ export class AbsencesService {
         {
           startDate,
           endDate,
+          minutes,
           type: payload.type,
           note: payload.note,
         },
       );
-
-      const moved =
-        startDate !== absence.startDate || endDate !== absence.endDate;
 
       if (moved) {
         await this.capacity.assertEmployedOn(
@@ -255,8 +317,17 @@ export class AbsencesService {
         );
       }
 
+      // A part of a day is measured against the time logged when its day
+      // changes or its hours grow: not on a later edit of its reason or note,
+      // nor when it is shortened, which only frees the day.
+      const recheckPart =
+        moved ||
+        absence.minutes === null ||
+        (minutes !== null && minutes > absence.minutes);
+
       absence.startDate = startDate;
       absence.endDate = endDate;
+      absence.minutes = minutes;
       if (payload.type !== undefined) absence.type = payload.type;
       if (payload.note !== undefined) absence.note = payload.note;
       absence.updatedById = user.id;
@@ -267,16 +338,20 @@ export class AbsencesService {
         user.companyId,
         startDate,
         endDate,
+        minutes === null ? null : { minutes, recheck: recheckPart },
         id,
       );
-      const removedPlans = await this.removePlansOn(
-        manager,
-        ownerId,
-        user.companyId,
-        startDate,
-        endDate,
-        lockedDays,
-      );
+      const removedPlans =
+        minutes === null
+          ? await this.removePlansOn(
+              manager,
+              ownerId,
+              user.companyId,
+              startDate,
+              endDate,
+              lockedDays,
+            )
+          : [];
 
       const saved = await manager.save(Absence, absence);
       await this.tellPlanAuthors(manager, ownerId, user, removedPlans);
@@ -320,7 +395,7 @@ export class AbsencesService {
       );
       if (keepsEveryDay || hasOpenDaysBetween) {
         throw lockedAbsenceError(
-          `Cannot delete the absence from ${absence.startDate} to ${absence.endDate}: its days in a locked reporting period stay as they are.`,
+          `Cannot delete the absence from ${formatDay(absence.startDate)} to ${formatDay(absence.endDate)}: its days in a locked reporting period stay as they are.`,
         );
       }
 
@@ -349,9 +424,27 @@ export class AbsencesService {
     });
   }
 
-  private assertRangeOrder(startDate: string, endDate: string): void {
+  /**
+   * In order, and no longer than the range reports and planning take; part of
+   * a day is for one day only.
+   */
+  private assertRange(
+    startDate: string,
+    endDate: string,
+    minutes: number | null,
+  ): void {
     if (startDate > endDate) {
       throw new BadRequestException('startDate cannot be after endDate');
+    }
+    if (endDate > addDays(startDate, MAX_RANGE_DAYS - 1)) {
+      throw new BadRequestException(
+        `An absence can last at most ${MAX_RANGE_DAYS} days.`,
+      );
+    }
+    if (minutes !== null && startDate !== endDate) {
+      throw new BadRequestException(
+        'An absence for part of a day covers one day only.',
+      );
     }
   }
 
@@ -374,7 +467,7 @@ export class AbsencesService {
 
     if (isLocked) {
       throw lockedAbsenceError(
-        `Cannot record an absence from ${startDate} to ${endDate}: it touches a locked reporting period.`,
+        `Cannot record an absence from ${formatDay(startDate)} to ${formatDay(endDate)}: it touches a locked reporting period.`,
       );
     }
   }
@@ -389,7 +482,7 @@ export class AbsencesService {
     manager: EntityManager,
     companyId: string,
     absence: Absence,
-    next: Pick<Absence, 'startDate' | 'endDate'> &
+    next: Pick<Absence, 'startDate' | 'endDate' | 'minutes'> &
       Pick<UpdateAbsencePayload, 'type' | 'note'>,
   ): Promise<DateRange[]> {
     const lockedMonths = await this.reportingService.lockedMonthsIn(
@@ -408,16 +501,21 @@ export class AbsencesService {
     const after = lockedDaysIn(lockedMonths, next.startDate, next.endDate);
     if (JSON.stringify(before) !== JSON.stringify(after)) {
       throw lockedAbsenceError(
-        `Cannot change the absence to ${next.startDate} – ${next.endDate}: its days in a locked reporting period stay as they are.`,
+        `Cannot change the absence to ${formatDay(next.startDate)} – ${formatDay(next.endDate)}: its days in a locked reporting period stay as they are.`,
       );
     }
 
     const changesWholeRecord =
+      next.minutes !== absence.minutes ||
       (next.type !== undefined && next.type !== absence.type) ||
       (next.note !== undefined && next.note !== (absence.note ?? null));
     if (before.length > 0 && changesWholeRecord) {
+      const kept =
+        absence.minutes === null && next.minutes === null
+          ? 'reason and note'
+          : 'reason, hours and note';
       throw lockedAbsenceError(
-        'Part of this absence is in a locked month, so its reason and note stay as they are.',
+        `Part of this absence is in a locked month, so its ${kept} stay as they are.`,
       );
     }
 
@@ -425,9 +523,10 @@ export class AbsencesService {
   }
 
   /**
-   * A day is either worked or absent, never both, and two absences may not
-   * cover the same day. Time logs are read straight from their table so the
-   * two services do not have to depend on each other.
+   * A whole day is either worked or absent, never both; part of a day fits
+   * beside the time logged on it (`assertPartFits`, when `recheck`). Two
+   * absences may not cover the same day. Time logs are read straight from
+   * their table so the two services do not have to depend on each other.
    */
   private async assertRangeIsFree(
     manager: EntityManager,
@@ -435,26 +534,26 @@ export class AbsencesService {
     companyId: string,
     startDate: string,
     endDate: string,
+    partDay: { minutes: number; recheck: boolean } | null,
     excludeId?: string,
   ): Promise<void> {
-    const loggedDays = await manager
-      .createQueryBuilder()
-      .select(`DISTINCT TO_CHAR(t.date, 'YYYY-MM-DD')`, 'date')
-      .from('time_logs', 't')
-      .where('t.company_id = :companyId', { companyId })
-      .andWhere('t.user_id = :userId', { userId })
-      .andWhere('t.date BETWEEN :startDate AND :endDate', {
+    if (partDay) {
+      if (partDay.recheck) {
+        await this.assertPartFits(
+          manager,
+          userId,
+          companyId,
+          startDate,
+          partDay.minutes,
+        );
+      }
+    } else {
+      await this.assertNoTimeLogged(
+        manager,
+        userId,
+        companyId,
         startDate,
         endDate,
-      })
-      .orderBy('date', 'ASC')
-      .getRawMany<{ date: string }>();
-
-    if (loggedDays.length > 0) {
-      const dates = loggedDays.map((row) => row.date);
-      const onWeekend = dates.some((date) => !isWorkingDay(date));
-      throw new ConflictException(
-        `Time is already logged on ${dates.join(', ')}. A day cannot be both worked and absent, so remove that time first.${onWeekend ? SPLIT_AROUND_WEEKEND : ''}`,
       );
     }
 
@@ -473,7 +572,111 @@ export class AbsencesService {
 
     if (overlapping) {
       throw new ConflictException(
-        `An absence already covers ${overlapping.startDate} to ${overlapping.endDate}. Absences cannot overlap.`,
+        `An absence already covers ${formatDay(overlapping.startDate)} to ${formatDay(overlapping.endDate)}. Absences cannot overlap.`,
+      );
+    }
+  }
+
+  /**
+   * Part of a day is taken from a working day with working hours, is shorter
+   * than that day, and fits in what the time logged on it leaves.
+   */
+  private async assertPartFits(
+    manager: EntityManager,
+    userId: string,
+    companyId: string,
+    date: string,
+    minutes: number,
+  ): Promise<void> {
+    const workingDay = await this.workingMinutesOn(companyId, userId, date);
+    if (workingDay === 0) {
+      throw new BadRequestException(
+        `${formatDay(date)} has no working hours, so part of it can't be taken off.`,
+      );
+    }
+    if (minutes >= workingDay) {
+      throw new BadRequestException(
+        `Part of a day must be shorter than the ${formatMinutes(workingDay)} working day. Record the whole day instead.`,
+      );
+    }
+
+    const loggedMinutes = await this.sumMinutesOn(
+      manager,
+      'time_logs',
+      'minutes',
+      companyId,
+      userId,
+      date,
+    );
+    const left = Math.max(0, workingDay - loggedMinutes);
+
+    if (minutes > left) {
+      throw new ConflictException(
+        `Only ${formatMinutes(left)} of ${formatDay(date)} is left: ${formatMinutes(loggedMinutes)} is already logged.`,
+      );
+    }
+  }
+
+  /** The person's working day on a date, in whole minutes; 0 on a weekend. */
+  private async workingMinutesOn(
+    companyId: string,
+    userId: string,
+    date: string,
+  ): Promise<number> {
+    if (!isWorkingDay(date)) return 0;
+    const timeline = await this.capacity.timelineFor(companyId, userId, date);
+    return Math.floor(timeline.minutesPerDayOn(date));
+  }
+
+  /** Time logged or planned for the person on a date, read straight from its table. */
+  private async sumMinutesOn(
+    manager: EntityManager,
+    table: 'time_logs' | 'planning_entries',
+    column: 'minutes' | 'planned_minutes',
+    companyId: string,
+    userId: string,
+    date: string,
+  ): Promise<number> {
+    const row = await manager
+      .createQueryBuilder()
+      .select(`COALESCE(SUM(r.${column}), 0)`, 'minutes')
+      .from(table, 'r')
+      .where('r.company_id = :companyId', { companyId })
+      .andWhere('r.user_id = :userId', { userId })
+      .andWhere('r.date = :date', { date })
+      .getRawOne<{ minutes: string }>();
+    return Number(row?.minutes ?? 0);
+  }
+
+  private async assertNoTimeLogged(
+    manager: EntityManager,
+    userId: string,
+    companyId: string,
+    startDate: string,
+    endDate: string,
+  ): Promise<void> {
+    const loggedDays = await manager
+      .createQueryBuilder()
+      .select(`DISTINCT TO_CHAR(t.date, 'YYYY-MM-DD')`, 'date')
+      .from('time_logs', 't')
+      .where('t.company_id = :companyId', { companyId })
+      .andWhere('t.user_id = :userId', { userId })
+      .andWhere('t.date BETWEEN :startDate AND :endDate', {
+        startDate,
+        endDate,
+      })
+      .orderBy('date', 'ASC')
+      .getRawMany<{ date: string }>();
+
+    if (loggedDays.length > 0) {
+      const dates = loggedDays.map((row) => row.date);
+      const weekendDates = dates.filter((date) => !isWorkingDay(date));
+      const weekendHint =
+        weekendDates.length > 0
+          ? weekendWorkHint(weekendDates, startDate, endDate)
+          : '';
+      throw new ConflictException(
+        `Time is already logged on ${dates.map((date) => formatDay(date)).join(', ')}. A day cannot be both worked and absent, so remove that time first.${weekendHint}`,
       );
     }
   }

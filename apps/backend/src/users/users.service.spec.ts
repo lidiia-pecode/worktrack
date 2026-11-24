@@ -224,6 +224,20 @@ describe('UsersService scope', () => {
 
       expect(results).toEqual([]);
     });
+
+    it('matches a full name, its words in any order', async () => {
+      expect(await foundIds('outsider test')).toEqual([outsider.id]);
+      expect(await foundIds('TEST  outsider')).toEqual([outsider.id]);
+    });
+
+    it('needs every word, each in the name, the email or the position', async () => {
+      await dataSource
+        .getRepository(User)
+        .update(member.id, { position: 'Quality Lead' });
+
+      expect(await foundIds('member quality')).toEqual([member.id]);
+      expect(await foundIds('outsider quality')).toEqual([]);
+    });
   });
 
   describe('list rows', () => {
@@ -862,6 +876,31 @@ describe('UsersService scope', () => {
       await service.unarchive(mistake.id, companyId, today);
 
       expect(await spellsOf(mistake.id)).toHaveLength(0);
+    });
+
+    it('brings back at once someone deactivated today, with no day missed', async () => {
+      const mistake = await createLongServing('sameday');
+      await service.archive(mistake.id, owner.id, companyId, today);
+
+      const back = await service.unarchive(mistake.id, companyId, tomorrow);
+
+      expect(back).toMatchObject({
+        status: UserStatus.ACTIVE,
+        lastWorkingDay: null,
+      });
+      expect(await spellsOf(mistake.id)).toHaveLength(0);
+      await expect(
+        capacity.assertEmployedOn(companyId, mistake.id, tomorrow),
+      ).resolves.toBeUndefined();
+    });
+
+    it('still refuses a first day back after today for someone who left earlier', async () => {
+      const leaver = await createLongServing('leftearlier');
+      await service.archive(leaver.id, owner.id, companyId, yesterday);
+
+      await expect(
+        service.unarchive(leaver.id, companyId, tomorrow),
+      ).rejects.toThrow('cannot be after today');
     });
 
     it('ends their sessions', async () => {

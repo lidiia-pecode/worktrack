@@ -77,7 +77,7 @@ type PlanPeriodModalProps = {
   weekDates: Date[];
   /** Opened from Planning's month (YYYY-MM): it opens on that whole month. */
   month?: string;
-  /** Opens the absence form on the chosen days, to change before saving. */
+  /** Opens the absence form for this person; the chosen period says which day it starts on. */
   onAddAbsence: (startDate: string, endDate: string) => void;
   onClose: () => void;
 };

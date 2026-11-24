@@ -202,8 +202,11 @@ rule trustworthy.
 - **Planning follows the same people**, except that an employee plans for
   nobody, not even themselves. Reach is checked before anything about the
   person, so a manager is refused the same way for someone outside it whether
-  that person is active or not. Recording an absence deletes the absence owner's
-  plans on its days, which opens no planning route to employees. A manager's
+  that person is active or not. Recording a whole-day absence deletes the
+  absence owner's plans on its days, which opens no planning route to
+  employees. The absence form reads a day's working, logged and planned hours
+  for whoever may write that person's absences, without opening capacity to a
+  manager. A manager's
   project save only removes people they were shown, so they can never clear
   plans for someone outside their teams.
 - **Whoever made the removed plans is told within their reach.** The notice
@@ -213,7 +216,8 @@ rule trustworthy.
   learns nothing of that team's days.
 - **Reports follow the same people.** The hours and people reports answer
   every role through the same visibility, an employee getting their own figures
-  alone; the export and the timeline stay with owners and managers.
+  alone; the export, its employee summary included, and the timeline stay with
+  owners and managers, each within what they see.
 
 ### 3.8 Delegation summary
 

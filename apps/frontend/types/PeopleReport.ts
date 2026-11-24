@@ -9,8 +9,14 @@ export interface PeopleReportFigures {
   plannedMinutes: number;
   /** Capacity minus time off, over the same finished days. */
   expectedMinutes: number;
-  /** Working days with working hours an absence covered among those days. */
+  /** Working days with working hours an absence covered whole among those days. */
   timeOffDays: number;
+  /** `timeOffDays` by reason. */
+  vacationDays: number;
+  sickLeaveDays: number;
+  publicHolidayDays: number;
+  /** Minutes away on the days an absence covered part of. */
+  partDayAbsenceMinutes: number;
 }
 
 /** Some of a person's days in the period, with their figures on those days. */

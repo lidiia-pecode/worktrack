@@ -30,7 +30,7 @@ import type { AuthUser } from 'src/auth/auth-strategies/types';
 import { AuthSession } from 'src/auth/entities/auth-session.entity';
 import { CapacityService } from 'src/capacity/capacity.service';
 import { ProjectStatus } from 'src/projects/enums/project-status.enum';
-import { andWhereAnyContains } from 'src/lib/utils/contains-text.util';
+import { andWhereEveryWordInAny } from 'src/lib/utils/contains-text.util';
 import { orderByName } from 'src/lib/utils/order-by-name.util';
 import { Team } from 'src/teams/entities/team.entity';
 import { pageOffset } from 'src/lib/dtos/pagination-query.dto';
@@ -203,7 +203,7 @@ export class UsersService {
     }
 
     if (query.search) {
-      andWhereAnyContains(qb, PERSON_SEARCH_COLUMNS, query.search);
+      andWhereEveryWordInAny(qb, PERSON_SEARCH_COLUMNS, query.search);
     }
 
     // The People list is about now.
@@ -313,7 +313,7 @@ export class UsersService {
     }
 
     if (query.search) {
-      andWhereAnyContains(qb, PERSON_SEARCH_COLUMNS, query.search);
+      andWhereEveryWordInAny(qb, PERSON_SEARCH_COLUMNS, query.search);
     }
 
     if (query.noTeam) {
@@ -854,15 +854,22 @@ export class UsersService {
     );
   }
 
-  /** Today or earlier, after their last working day, in an open month. */
+  /**
+   * Today or earlier, after their last working day, in an open month. Someone
+   * deactivated today comes back the day after it, tomorrow, which misses no
+   * day: a deactivation made by mistake is undone at once.
+   */
   private async assertFirstDayBack(
     man: EntityManager,
     user: User,
     firstDayBack: string,
   ): Promise<void> {
     const { timezone } = await this.capacity.calendarFor(user.companyId);
+    const today = todayISODate(timezone);
+    const isBackWithoutAGapToday =
+      user.lastWorkingDay === today && firstDayBack === addDays(today, 1);
 
-    if (firstDayBack > todayISODate(timezone)) {
+    if (firstDayBack > today && !isBackWithoutAGapToday) {
       throw new BadRequestException(
         'The first day back cannot be after today.',
       );

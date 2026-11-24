@@ -79,6 +79,10 @@ const myRow: PeopleReportRow = {
   plannedMinutes: 140 * HOUR,
   expectedMinutes: 136 * HOUR,
   timeOffDays: 2,
+  vacationDays: 2,
+  sickLeaveDays: 0,
+  publicHolidayDays: 0,
+  partDayAbsenceMinutes: 0,
   daysWithoutTime: ["2026-10-14"],
 };
 

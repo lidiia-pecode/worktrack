@@ -40,6 +40,10 @@ const person = (
   plannedMinutes: 0,
   expectedMinutes: 100 * HOUR,
   timeOffDays: 0,
+  vacationDays: 0,
+  sickLeaveDays: 0,
+  publicHolidayDays: 0,
+  partDayAbsenceMinutes: 0,
   daysWithoutTime: [],
   ...figures,
 });

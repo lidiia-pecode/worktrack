@@ -5,6 +5,7 @@ import { useId, useRef, useState } from "react";
 import { Field } from "@/components/ui/field";
 import { Popover, PopoverContent } from "@/components/ui/popover";
 import {
+  firstOfMonth,
   formatDayMonthYearLabel,
   fromISODate,
   toISODate,
@@ -21,6 +22,10 @@ type DatePickerProps = {
   minDate?: string | null;
   /** The latest day that can be chosen, YYYY-MM-DD. */
   maxDate?: string | null;
+  /** Days inside the limits that can't be chosen, YYYY-MM-DD. */
+  isDayDisabled?: (date: string) => boolean;
+  /** The first of the month the calendar shows, YYYY-MM-DD: as it opens and as it moves. */
+  onMonthChange?: (month: string) => void;
   label?: string;
   description?: string;
   error?: string;
@@ -33,6 +38,8 @@ export const DatePicker = ({
   onChange,
   minDate,
   maxDate,
+  isDayDisabled,
+  onMonthChange,
   label,
   description,
   error,
@@ -52,7 +59,13 @@ export const DatePicker = ({
       group
       className={className}
     >
-      <Popover open={open} onOpenChange={setOpen}>
+      <Popover
+        open={open}
+        onOpenChange={(isOpening) => {
+          setOpen(isOpening);
+          if (isOpening) onMonthChange?.(toISODate(firstOfMonth(day)));
+        }}
+      >
         <DateFieldTrigger
           label={formatDayMonthYearLabel(value)}
           invalid={!!error}
@@ -74,6 +87,12 @@ export const DatePicker = ({
               autoFocusDate={day}
               minDate={minDate ? fromISODate(minDate) : undefined}
               maxDate={maxDate ? fromISODate(maxDate) : undefined}
+              isDayDisabled={
+                isDayDisabled && ((day) => isDayDisabled(toISODate(day)))
+              }
+              onMonthChange={
+                onMonthChange && ((month) => onMonthChange(toISODate(month)))
+              }
               onSelectDay={(picked) => {
                 onChange(toISODate(picked));
                 setOpen(false);

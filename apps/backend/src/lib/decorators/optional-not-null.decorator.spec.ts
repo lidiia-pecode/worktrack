@@ -34,7 +34,7 @@ const UPDATE_PAYLOADS: {
   {
     dto: UpdateAbsencePayload,
     required: ['type', 'startDate', 'endDate'],
-    nullable: ['note'],
+    nullable: ['minutes', 'note'],
   },
   {
     dto: UpdateUserPayload,

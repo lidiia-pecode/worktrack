@@ -1,22 +1,9 @@
-import {
-  Controller,
-  Get,
-  Param,
-  Post,
-  Query,
-  StreamableFile,
-} from '@nestjs/common';
+import { Controller, Get, Param, Post, Query } from '@nestjs/common';
 
 import { ReportingService } from './reporting.service';
 import { UserRole } from 'src/users/enums/user-role.enum';
 import { CurrentUser, Role } from 'src/lib/decorators';
 import { HoursReportQuery } from './dtos/hours-report-query.dto';
-import { HoursExportQuery } from './dtos/hours-export-query.dto';
-import {
-  buildHoursExportWorkbook,
-  hoursExportFileName,
-  XLSX_CONTENT_TYPE,
-} from './hours-export.workbook';
 import {
   ReportingMonthParam,
   ReportingPeriodsQuery,
@@ -67,25 +54,5 @@ export class ReportingController {
     @Query() query: HoursReportQuery,
   ) {
     return this.reportingService.getHoursReport(user, query);
-  }
-
-  @Get('hours/export')
-  @Role(UserRole.OWNER, UserRole.MANAGER)
-  async exportHours(
-    @CurrentUser() user: AuthUser,
-    @Query() query: HoursExportQuery,
-  ) {
-    const [{ rows, countedTo }, teamName] = await Promise.all([
-      this.reportingService.getHoursExport(user, query),
-      query.teamId
-        ? this.reportingService.exportTeamName(user, query.teamId)
-        : null,
-    ]);
-    const fileName = hoursExportFileName(query.dateFrom, countedTo, teamName);
-
-    return new StreamableFile(await buildHoursExportWorkbook(rows), {
-      type: XLSX_CONTENT_TYPE,
-      disposition: `attachment; filename="${fileName}"`,
-    });
   }
 }

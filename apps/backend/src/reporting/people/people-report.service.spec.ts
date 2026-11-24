@@ -53,6 +53,8 @@ const THIRTEEN_WEEKS_AND_A_DAY = {
 };
 const WORKING_DAYS_IN_MARCH = 22;
 const FULL_DAY = 8 * 60;
+// Part of 11 March the member is away.
+const PART_DAY_AWAY = 145;
 const PART_TIME_WEEK = 24 * 60;
 
 describe('PeopleReportService', () => {
@@ -173,6 +175,14 @@ describe('PeopleReportService', () => {
       },
       {
         companyId,
+        userId: member,
+        type: AbsenceType.SICK_LEAVE,
+        startDate: '2026-03-11',
+        endDate: '2026-03-11',
+        minutes: PART_DAY_AWAY,
+      },
+      {
+        companyId,
         userId: awayAllMonth,
         type: AbsenceType.SICK_LEAVE,
         startDate: '2026-03-01',
@@ -229,8 +239,22 @@ describe('PeopleReportService', () => {
       billableMinutes: 960,
       nonBillableMinutes: 240,
       plannedMinutes: 600,
-      expectedMinutes: (WORKING_DAYS_IN_MARCH - 2) * FULL_DAY,
+      expectedMinutes: (WORKING_DAYS_IN_MARCH - 2) * FULL_DAY - PART_DAY_AWAY,
       timeOffDays: 2,
+    });
+  });
+
+  it('counts whole days off by reason, and the part-day hours apart', async () => {
+    expect(await rowFor(owner, member)).toMatchObject({
+      timeOffDays: 2,
+      vacationDays: 2,
+      sickLeaveDays: 0,
+      publicHolidayDays: 0,
+      partDayAbsenceMinutes: PART_DAY_AWAY,
+    });
+    expect(await rowFor(owner, awayAllMonth)).toMatchObject({
+      sickLeaveDays: WORKING_DAYS_IN_MARCH,
+      partDayAbsenceMinutes: 0,
     });
   });
 
@@ -922,7 +946,7 @@ describe('PeopleReportService', () => {
       expect((await rowFor(northManager, mover))?.outsideTeams).toBeNull();
     });
 
-    it("keeps each team's export and timeline to its own days", async () => {
+    it("keeps each team's export and timeline to its own days, the summary matching its entries", async () => {
       const exportDates = async (team: string) =>
         (await reporting.getHoursExport(owner, { ...MARCH, teamId: team })).rows
           .filter((row) => row.email.startsWith('Emma'))
@@ -930,6 +954,24 @@ describe('PeopleReportService', () => {
 
       expect(await exportDates(northId)).toEqual(['2026-03-12']);
       expect(await exportDates(southId)).toEqual(['2026-03-18']);
+
+      // The summary sheet's Logged is the sum of the entries sheet's rows.
+      for (const team of [northId, southId]) {
+        const { rows } = await reporting.getHoursExport(owner, {
+          ...MARCH,
+          teamId: team,
+        });
+        const { rows: people } = await service.getPeopleReport(owner, {
+          ...MARCH,
+          teamId: team,
+        });
+        const moverRow = people.find((row) => row.userId === mover);
+        expect(moverRow?.loggedMinutes).toBe(
+          rows
+            .filter((row) => row.email === moverRow?.email)
+            .reduce((sum, row) => sum + row.minutes, 0),
+        );
+      }
 
       const { timeline } = await service.getOverview(southManager, MARCH);
       expect(

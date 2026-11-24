@@ -23,6 +23,7 @@ const OWNER = [UserRole.OWNER];
 const ROUTE_ROLES: Record<string, Record<string, UserRole[]>> = {
   AbsencesController: {
     getAllAbsences: EVERY_ROLE,
+    getDay: EVERY_ROLE,
     createAbsence: EVERY_ROLE,
     updateAbsence: EVERY_ROLE,
     deleteAbsence: EVERY_ROLE,
@@ -97,6 +98,7 @@ const ROUTE_ROLES: Record<string, Record<string, UserRole[]>> = {
   PeopleReportController: {
     getPeopleReport: EVERY_ROLE,
     getOverview: OWNER_AND_MANAGER,
+    exportHours: OWNER_AND_MANAGER,
   },
   PlanningController: {
     list: EVERY_ROLE,
@@ -129,7 +131,6 @@ const ROUTE_ROLES: Record<string, Record<string, UserRole[]>> = {
     getHoursReport: EVERY_ROLE,
     reopenPeriod: OWNER,
     closePeriod: OWNER,
-    exportHours: OWNER_AND_MANAGER,
   },
   TeamsController: {
     list: OWNER_AND_MANAGER,

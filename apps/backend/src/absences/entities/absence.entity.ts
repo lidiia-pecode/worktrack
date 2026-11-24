@@ -15,6 +15,7 @@ import { AbsenceType } from '../enums/absence-type.enum';
 
 @Entity('absences')
 @Check(`"end_date" >= "start_date"`)
+@Check(`"minutes" IS NULL OR ("minutes" > 0 AND "start_date" = "end_date")`)
 @Index('IDX_absences_company_user_start', ['companyId', 'userId', 'startDate'])
 export class Absence {
   @PrimaryGeneratedColumn('uuid')
@@ -51,6 +52,10 @@ export class Absence {
 
   @Column({ type: 'date', name: 'end_date', nullable: false })
   endDate!: string;
+
+  /** Part of one day, in minutes; null for whole days. */
+  @Column({ type: 'integer', nullable: true })
+  minutes!: number | null;
 
   @Column({ type: 'text', nullable: true })
   note?: string | null;

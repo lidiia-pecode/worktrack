@@ -23,6 +23,21 @@ vi.mock("@/hooks/usePlanning", () => ({
   }),
 }));
 
+// A whole-day form never reads a day's hours; no day nearby is taken.
+vi.mock("@/hooks/useAbsences", () => ({
+  useAbsenceDay: () => ({ data: undefined, isError: false, refetch: vi.fn() }),
+  useAbsencesMutations: vi.fn(),
+  useAllAbsencesQuery: () => ({ items: [] }),
+}));
+
+vi.mock("@/hooks/useTimelogs", () => ({
+  useAllTimeLogsQuery: () => ({ items: [] }),
+}));
+
+vi.mock("@/hooks/useReportingPeriods", () => ({
+  useLockedDates: () => ({ isLocked: () => false }),
+}));
+
 const plan = (id: string, projectName: string, minutes: number) =>
   ({
     id,
@@ -66,7 +81,7 @@ describe("AbsenceFormModal", () => {
 
     expect(
       screen.getByText(
-        "Deletes 2 plans on these days: Northwind 4h, Internal 2h",
+        "Deletes 2 plans on this day: Northwind 4h, Internal 2h",
       ),
     ).toBeInTheDocument();
   });

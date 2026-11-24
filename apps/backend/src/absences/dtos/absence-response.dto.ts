@@ -19,6 +19,10 @@ export class AbsenceResponse {
   @Expose()
   endDate!: string;
 
+  /** Part of one day, in minutes; null for whole days. */
+  @Expose()
+  minutes!: number | null;
+
   @Expose()
   note?: string;
 

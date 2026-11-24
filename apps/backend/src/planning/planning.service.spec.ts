@@ -189,6 +189,16 @@ describe('PlanningService', () => {
       endDate,
     });
 
+  const partlyAbsentOn = (userId: string, date: string, minutes: number) =>
+    dataSource.getRepository(Absence).save({
+      companyId,
+      userId,
+      type: AbsenceType.VACATION,
+      startDate: date,
+      endDate: date,
+      minutes,
+    });
+
   const entriesFor = (userId: string) =>
     dataSource.getRepository(PlanningEntry).find({
       where: { companyId, userId },
@@ -497,6 +507,19 @@ describe('PlanningService', () => {
         planDay(member.id, WEDNESDAY, 6 * HOUR + 45, manager),
       ).rejects.toThrow(BadRequestException);
     });
+
+    it('leaves out the part of a day someone is away, and keeps the plans there', async () => {
+      await existingEntry(member.id, WEDNESDAY, 8 * HOUR);
+      await partlyAbsentOn(member.id, WEDNESDAY, 2 * HOUR + 25);
+
+      const week = await service.getWeek({ date: MONDAY }, owner);
+      const row = week.rows.find((r) => r.user.id === member.id)!;
+      expect(row.dayLimits.find((day) => day.date === WEDNESDAY)?.minutes).toBe(
+        5 * HOUR + 35,
+      );
+      expect(row.availableMinutes).toBe(40 * HOUR - (2 * HOUR + 25));
+      expect(row.plannedMinutes).toBe(8 * HOUR);
+    });
   });
 
   describe('the week', () => {
@@ -545,6 +568,68 @@ describe('PlanningService', () => {
       expect(entries).toHaveLength(18);
       expect(entries.map((e) => e.date)).not.toContain(WEDNESDAY);
       expect(entries.map((e) => e.date)).not.toContain(SATURDAY);
+    });
+
+    it('fits the lines into a partly absent day, the last ones giving way', async () => {
+      await partlyAbsentOn(member.id, WEDNESDAY, 2 * HOUR + 25);
+      const plan = period(MONDAY, FRIDAY, [
+        { projectId, minutesPerDay: 4 * HOUR },
+        { projectId: otherProjectId, minutesPerDay: 4 * HOUR },
+      ]);
+
+      const preview = await service.previewPeriod(plan, manager);
+      expect(preview.problems).toEqual([]);
+      expect(preview.partDays).toEqual([
+        { date: WEDNESDAY, absenceMinutes: 2 * HOUR + 25 },
+      ]);
+
+      await service.planPeriod(plan, manager);
+      // 5h 35m left, down to the quarter hour: 4h and 1h 30m.
+      const wednesday = (await entriesFor(member.id)).filter(
+        (e) => e.date === WEDNESDAY,
+      );
+      expect(
+        Object.fromEntries(
+          wednesday.map((e) => [e.projectId, e.plannedMinutes]),
+        ),
+      ).toEqual({
+        [projectId]: 4 * HOUR,
+        [otherProjectId]: HOUR + 30,
+      });
+    });
+
+    it('fits them beside the plans already on other projects', async () => {
+      await partlyAbsentOn(member.id, WEDNESDAY, 2 * HOUR + 25);
+      await existingEntry(member.id, WEDNESDAY, 2 * HOUR, otherProjectId);
+
+      await service.planPeriod(
+        period(WEDNESDAY, WEDNESDAY, [{ projectId, minutesPerDay: 8 * HOUR }]),
+        manager,
+      );
+
+      const planned = (await entriesFor(member.id)).find(
+        (e) => e.projectId === projectId,
+      );
+      expect(planned?.plannedMinutes).toBe(3 * HOUR + 30);
+    });
+
+    it("removes a line's own plan from a partly absent day that has no room left for it", async () => {
+      await partlyAbsentOn(member.id, WEDNESDAY, 4 * HOUR);
+      await existingEntry(member.id, WEDNESDAY, 2 * HOUR);
+      await existingEntry(member.id, WEDNESDAY, 6 * HOUR, otherProjectId);
+      const plan = period(WEDNESDAY, WEDNESDAY, [
+        { projectId, minutesPerDay: 4 * HOUR },
+        { projectId: otherProjectId, minutesPerDay: 4 * HOUR },
+      ]);
+
+      expect((await service.previewPeriod(plan, manager)).problems).toEqual([]);
+      await service.planPeriod(plan, manager);
+
+      expect(
+        (await entriesFor(member.id))
+          .filter((e) => e.date === WEDNESDAY)
+          .map((e) => [e.projectId, e.plannedMinutes]),
+      ).toEqual([[projectId, 4 * HOUR]]);
     });
 
     it('replaces the listed project and keeps the others', async () => {

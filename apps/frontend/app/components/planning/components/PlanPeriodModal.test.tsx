@@ -155,6 +155,7 @@ describe("PlanPeriodModal", () => {
     server.preview = {
       plannedDays: OCTOBER_DAYS,
       daysInAnotherTeam: [],
+      partDays: [],
       problems: [],
       changes: [],
       dayLimitMinutes: 480,
@@ -232,6 +233,7 @@ describe("PlanPeriodModal", () => {
     server.preview = {
       plannedDays: OCTOBER_DAYS.slice(0, 16),
       daysInAnotherTeam: [],
+      partDays: [],
       dayLimitMinutes: 480,
       problems: [],
       changes: [],
@@ -243,6 +245,7 @@ describe("PlanPeriodModal", () => {
         type: AbsenceType.VACATION,
         startDate: "2026-10-19",
         endDate: "2026-10-23",
+        minutes: null,
         createdAt: "",
         updatedAt: "",
       },
@@ -270,6 +273,7 @@ describe("PlanPeriodModal", () => {
     server.preview = {
       plannedDays: [],
       daysInAnotherTeam: [],
+      partDays: [],
       problems: [],
       changes: [],
       dayLimitMinutes: 480,
@@ -281,6 +285,7 @@ describe("PlanPeriodModal", () => {
         type: AbsenceType.SICK_LEAVE,
         startDate: "2026-09-28",
         endDate: "2026-11-06",
+        minutes: null,
         createdAt: "",
         updatedAt: "",
       },
@@ -307,6 +312,7 @@ describe("PlanPeriodModal", () => {
     server.preview = {
       plannedDays: OCTOBER_DAYS,
       daysInAnotherTeam: [],
+      partDays: [],
       dayLimitMinutes: 480,
       problems: [overDay("2026-10-12"), overDay("2026-10-13")],
       changes: [],
@@ -430,6 +436,7 @@ describe("PlanPeriodModal", () => {
     server.preview = {
       plannedDays: OCTOBER_DAYS,
       daysInAnotherTeam: [],
+      partDays: [],
       dayLimitMinutes: 480,
       problems: [],
       changes: [{ projectId: "project-internal", added: 0, changed: 2 }],

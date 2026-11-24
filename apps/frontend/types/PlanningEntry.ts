@@ -67,6 +67,8 @@ export interface PeriodPreview {
   dayLimitMinutes: number;
   /** Working days skipped because the person was in a team the viewer doesn't lead. */
   daysInAnotherTeam: string[];
+  /** Planned days the person is partly away, where the plan takes only what is left. */
+  partDays: { date: string; absenceMinutes: number }[];
 }
 
 // Query (back PlanningQueryDto)

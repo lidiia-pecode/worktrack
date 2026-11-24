@@ -52,6 +52,10 @@ type MonthCalendarProps = {
   minDate?: Date;
   /** The latest day that can be chosen, inert past it like `minDate`. */
   maxDate?: Date;
+  /** Days that can't be chosen inside the limits, inert like those past them. */
+  isDayDisabled?: (day: Date) => boolean;
+  /** A move to another month; opening on `initialMonth` is not reported. */
+  onMonthChange?: (month: Date) => void;
   onSelectDay: (day: Date) => void;
   /** The day under the pointer or keyboard focus, null once it leaves. */
   onHoverDay?: (day: Date | null) => void;
@@ -68,13 +72,19 @@ export const MonthCalendar = ({
   autoFocusDate,
   minDate,
   maxDate,
+  isDayDisabled,
   onSelectDay,
   onHoverDay,
+  onMonthChange,
 }: MonthCalendarProps) => {
   const [viewMonth, setViewMonth] = useState(initialMonth);
   const [focusDate, setFocusDate] = useState(
     autoFocusDate ?? selection?.start ?? initialMonth,
   );
+  const showMonth = (month: Date) => {
+    setViewMonth(month);
+    onMonthChange?.(month);
+  };
   const gridRef = useRef<HTMLDivElement>(null);
   const focusAfterRender = useRef(false);
   const { weekStartDay, timezone } = useWorkSettings();
@@ -101,7 +111,7 @@ export const MonthCalendar = ({
       next.getMonth() !== viewMonth.getMonth() ||
       next.getFullYear() !== viewMonth.getFullYear()
     ) {
-      setViewMonth(firstOfMonth(next));
+      showMonth(firstOfMonth(next));
     }
     focusAfterRender.current = true;
   };
@@ -122,7 +132,7 @@ export const MonthCalendar = ({
         <button
           type="button"
           aria-label="Previous month"
-          onClick={() => setViewMonth(firstOfMonth(viewMonth, -1))}
+          onClick={() => showMonth(firstOfMonth(viewMonth, -1))}
           className={MONTH_ARROW_CLASS}
         >
           <ChevronLeft size={16} aria-hidden />
@@ -133,7 +143,7 @@ export const MonthCalendar = ({
         <button
           type="button"
           aria-label="Next month"
-          onClick={() => setViewMonth(firstOfMonth(viewMonth, 1))}
+          onClick={() => showMonth(firstOfMonth(viewMonth, 1))}
           className={MONTH_ARROW_CLASS}
         >
           <ChevronRight size={16} aria-hidden />
@@ -166,7 +176,9 @@ export const MonthCalendar = ({
             (isSameDay(day, selection.start) || isSameDay(day, selection.end));
           const today = isToday(day, timezone);
           const isUnavailable =
-            (!!minDate && day < minDate) || (!!maxDate && day > maxDate);
+            (!!minDate && day < minDate) ||
+            (!!maxDate && day > maxDate) ||
+            !!isDayDisabled?.(day);
 
           return (
             <button

@@ -139,6 +139,16 @@ export async function seedReportHistory(
       }
       absences.push({ companyId, userId, ...absence });
     }
+    for (const { type, date, minutes } of person.partAbsences ?? []) {
+      absences.push({
+        companyId,
+        userId,
+        type,
+        startDate: date,
+        endDate: date,
+        minutes,
+      });
+    }
 
     for (const date of eachDate(start, lastPlanned)) {
       if (!isWorkingDay(date) || daysOff.has(date)) continue;
@@ -157,7 +167,10 @@ export async function seedReportHistory(
 
       if (date > lastLogged || !logsOn(person, date)) continue;
 
-      for (const item of person.work.filter((w) => isOn(w, date))) {
+      const partAbsence = person.partAbsences?.find((a) => a.date === date);
+      const work =
+        partAbsence?.work ?? person.work.filter((w) => isOn(w, date));
+      for (const item of work) {
         logTime(person.email, date, item);
       }
     }

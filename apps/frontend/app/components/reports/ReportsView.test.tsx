@@ -126,6 +126,10 @@ const person = (
     plannedMinutes: plannedHours * HOUR,
     expectedMinutes: expectedHours * HOUR,
     timeOffDays,
+    vacationDays: timeOffDays,
+    sickLeaveDays: 0,
+    publicHolidayDays: 0,
+    partDayAbsenceMinutes: 0,
   };
 
   return {
@@ -182,6 +186,11 @@ const peopleReport = (rows: PeopleReportRow[]): PeopleReport => ({
       plannedMinutes: sum.plannedMinutes + row.plannedMinutes,
       expectedMinutes: sum.expectedMinutes + row.expectedMinutes,
       timeOffDays: sum.timeOffDays + row.timeOffDays,
+      vacationDays: sum.vacationDays + row.vacationDays,
+      sickLeaveDays: sum.sickLeaveDays + row.sickLeaveDays,
+      publicHolidayDays: sum.publicHolidayDays + row.publicHolidayDays,
+      partDayAbsenceMinutes:
+        sum.partDayAbsenceMinutes + row.partDayAbsenceMinutes,
       daysWithoutTime: 0,
     }),
     {
@@ -191,6 +200,10 @@ const peopleReport = (rows: PeopleReportRow[]): PeopleReport => ({
       plannedMinutes: 0,
       expectedMinutes: 0,
       timeOffDays: 0,
+      vacationDays: 0,
+      sickLeaveDays: 0,
+      publicHolidayDays: 0,
+      partDayAbsenceMinutes: 0,
       daysWithoutTime: 0,
     },
   ),

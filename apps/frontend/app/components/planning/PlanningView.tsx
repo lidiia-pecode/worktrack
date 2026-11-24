@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { Lock, SearchX } from "lucide-react";
 
 import { usePlanningGrid } from "@/hooks/usePlanning";
-import { useAbsencesMutations, useAllAbsencesQuery } from "@/hooks/useAbsences";
+import { useAllAbsencesQuery } from "@/hooks/useAbsences";
 import { useAllProjectsQuery } from "@/hooks/useProjects";
 import { useWorkSettings } from "@/hooks/useWorkSettings";
 import { useLockedDates } from "@/hooks/useReportingPeriods";
@@ -25,8 +25,10 @@ import {
   todayISODate,
 } from "@/lib/utils/date";
 import { cn } from "@/lib/utils/cn";
-import { mapAbsencesByUserAndDate } from "@/lib/utils/absence";
-import { fullName } from "@/lib/utils/user";
+import {
+  mapAbsencesByUserAndDate,
+  newAbsenceStartDate,
+} from "@/lib/utils/absence";
 import {
   nextTeamSort,
   searchTeamRows,
@@ -34,7 +36,7 @@ import {
   TeamSortKey,
 } from "@/lib/utils/team-rows";
 import { lockLookupRange } from "@/lib/utils/reporting-period";
-import { PlanningRow } from "@/types";
+import { Absence, PlanningRow } from "@/types";
 import { ProjectStatus, UserRole } from "@/types/enums";
 
 import { Button } from "@/components/ui/button";
@@ -57,7 +59,7 @@ import { StepArrows } from "../shared/buttons/StepArrows";
 import { SegmentedControl } from "../shared/SegmentedControl";
 import { TeamFilters } from "../team/components/TeamFilters";
 import { useTeamTimeFilters } from "../team/useTeamTimeFilters";
-import { AbsenceFormModal } from "../timesheet/components/AbsenceFormModal";
+import { PersonAbsenceModal } from "../timesheet/components/AbsenceFormModal";
 import { PlanPeriodModal } from "./components/PlanPeriodModal";
 import { PlanningWeekRow } from "./components/PlanningWeekRow";
 import { PlanningMonthRow } from "./components/PlanningMonthRow";
@@ -65,11 +67,12 @@ import { PlanningColumn, PlanningTable } from "./components/PlanningTable";
 import { monthWorkingWeeks, weekLabel } from "./month-weeks";
 import { usePlanningPeriod } from "./usePlanningPeriod";
 
-/** An absence added from Plan a period, on the days it was planning. */
+/** An absence opened from the week's grid, or a new one added from Plan a period. */
 type AbsenceFormState = {
   user: PlanningRow["user"];
+  /** The day a new absence starts on. */
   date: string;
-  endDate: string;
+  absence?: Absence;
 };
 
 type PlanningViewProps = {
@@ -180,8 +183,6 @@ export const PlanningView = ({ role, viewerId }: PlanningViewProps) => {
     isError: isLocksError,
     refetch: refetchLocks,
   } = useLockedDates(lockRange.dateFrom, lockRange.dateTo);
-
-  const absenceActions = useAbsencesMutations();
 
   // The same list the project filter shows, so it comes from the cache.
   const { items: projects } = useAllProjectsQuery();
@@ -478,6 +479,13 @@ export const PlanningView = ({ role, viewerId }: PlanningViewProps) => {
                 projectName={projectName}
                 tooltip={tooltip}
                 onPlanPeriod={(opened) => setPeriodUserId(opened.user.id)}
+                onAbsenceClick={(absence) =>
+                  setAbsenceForm({
+                    user: row.user,
+                    date: absence.startDate,
+                    absence,
+                  })
+                }
               />
             ),
           )}
@@ -489,28 +497,12 @@ export const PlanningView = ({ role, viewerId }: PlanningViewProps) => {
       </Tooltip>
 
       {absenceForm && (
-        <AbsenceFormModal
-          open
-          onClose={() => setAbsenceForm(null)}
-          userId={absenceForm.user.id}
-          subjectName={fullName(absenceForm.user)}
+        <PersonAbsenceModal
+          user={absenceForm.user}
           date={absenceForm.date}
-          endDate={absenceForm.endDate}
+          absence={absenceForm.absence}
           isLocked={isLocked}
-          onCreate={(payload) =>
-            absenceActions.create.mutateAsync({
-              ...payload,
-              userId: absenceForm.user.id,
-            })
-          }
-          onUpdate={(id, data) =>
-            absenceActions.update.mutateAsync({ id, data })
-          }
-          onDelete={(id) => absenceActions.delete.mutateAsync(id)}
-          isSaving={
-            absenceActions.create.isPending || absenceActions.update.isPending
-          }
-          isDeleting={absenceActions.delete.isPending}
+          onClose={() => setAbsenceForm(null)}
         />
       )}
 
@@ -520,11 +512,17 @@ export const PlanningView = ({ role, viewerId }: PlanningViewProps) => {
           row={periodRow}
           weekDates={periodWeekDates}
           month={isMonth ? month : undefined}
+          // One day to start from, as on Team time: today when the period
+          // holds it, otherwise the period's first working day.
           onAddAbsence={(startDate, endDate) =>
             setAbsenceForm({
               user: periodRow.user,
-              date: startDate,
-              endDate,
+              date: newAbsenceStartDate({
+                today: fromISODate(todayIso),
+                weekStart: fromISODate(startDate),
+                isCurrentWeek: startDate <= todayIso && todayIso <= endDate,
+                isEditable: (date) => !isLocked(date),
+              }),
             })
           }
           onClose={() => setPeriodUserId(null)}

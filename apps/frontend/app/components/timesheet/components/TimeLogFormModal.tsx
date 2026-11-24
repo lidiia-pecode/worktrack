@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useForm, useWatch, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Trash2 } from "lucide-react";
+import { CalendarOff, Trash2 } from "lucide-react";
 import TextareaAutosize from "react-textarea-autosize";
 
 import { PickerProjectActivity } from "@/hooks/useAssignableActivities";
@@ -137,6 +137,8 @@ type Props = {
   onDelete: (id: string) => Promise<unknown>;
   isSaving: boolean;
   isDeleting: boolean;
+  /** A new entry's day can be taken off instead, in the absence form for that day. */
+  onAddAbsence?: () => void;
 };
 
 export const TimeLogFormModal = ({
@@ -153,6 +155,7 @@ export const TimeLogFormModal = ({
   onDelete,
   isSaving,
   isDeleting,
+  onAddAbsence,
 }: Props) => {
   const isEditMode = !!timelog;
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
@@ -389,6 +392,21 @@ export const TimeLogFormModal = ({
         }
         footer={
           <>
+            {!isEditMode && onAddAbsence && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={onAddAbsence}
+                className="mr-auto max-sm:px-2.5"
+                disabled={isSaving}
+              >
+                <CalendarOff className="size-4" />
+                {/* Icon only on a phone, so the footer stays on one row. */}
+                <span className="max-sm:sr-only">Add absence</span>
+              </Button>
+            )}
+
             {isEditMode && (
               <Button
                 type="button"

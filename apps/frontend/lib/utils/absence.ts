@@ -17,6 +17,9 @@ export const projectHoursText = (
     .map(({ name, minutes }) => `${name} ${formatDuration(minutes)}`)
     .join(", ");
 
+/** The longest one absence may last, both days counted; the API refuses more. */
+export const MAX_ABSENCE_DAYS = 366;
+
 export const ABSENCE_TYPE_LABELS: Record<AbsenceType, string> = {
   [AbsenceType.VACATION]: "Vacation",
   [AbsenceType.SICK_LEAVE]: "Sick leave",
@@ -29,8 +32,25 @@ export const ABSENCE_TYPE_SHORT_LABELS: Record<AbsenceType, string> = {
   [AbsenceType.PUBLIC_HOLIDAY]: "Holiday",
 };
 
+/** Part of one day, with its minutes, rather than a whole day or days. */
+export const isPartDayAbsence = (
+  absence: Pick<Absence, "minutes">,
+): absence is { minutes: number } => typeof absence.minutes === "number";
+
+/** "vacation", or "vacation 2h 25m" for part of a day, after a day's name. */
+export const absenceDayText = (absence: Absence) => {
+  const reason = ABSENCE_TYPE_LABELS[absence.type].toLowerCase();
+  return isPartDayAbsence(absence)
+    ? `${reason} ${formatDuration(absence.minutes)}`
+    : reason;
+};
+
+/** Its days, and the hours of part of a day: "Nov 23, 2h 25m". */
 export function formatAbsenceRange(absence: Absence): string {
-  return formatDayRangeLabel(absence.startDate, absence.endDate);
+  const days = formatDayRangeLabel(absence.startDate, absence.endDate);
+  return isPartDayAbsence(absence)
+    ? `${days}, ${formatDuration(absence.minutes)}`
+    : days;
 }
 
 /**

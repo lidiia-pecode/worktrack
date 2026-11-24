@@ -255,6 +255,7 @@ const ALL_USERS: SeedUser[] = [
     role: UserRole.EMPLOYEE,
     position: 'Backend Developer',
     capacityHoursPerWeek: 40,
+    note: 'Went home ill at midday last Wednesday: a part-day absence.',
   },
   {
     email: AVA,
@@ -907,6 +908,13 @@ export interface SeedHistory {
   missesFridaysFrom?: string;
   weekendWork?: (SeedWork & { date: string })[];
   absences?: { type: AbsenceType; startDate: string; endDate: string }[];
+  /** Days away for part of the day, with what was logged instead of `work`. */
+  partAbsences?: {
+    type: AbsenceType;
+    date: string;
+    minutes: number;
+    work: SeedWork[];
+  }[];
 }
 
 /**
@@ -918,7 +926,8 @@ export interface SeedHistory {
  * well below it; Internal Training is time with no plan; Liam, Zoe and Lucas
  * have days with no time in the last two weeks; Ruby has no plan after this
  * week and Charlotte is away next week; Ethan's plan stays at 8h a day after
- * his hours dropped.
+ * his hours dropped; Emma went home ill at midday last Wednesday, so her plan
+ * that day is over what was left of it.
  */
 const ALL_HISTORY: SeedHistory[] = [
   {
@@ -990,6 +999,20 @@ const ALL_HISTORY: SeedHistory[] = [
     plan: [
       { project: 'Data Warehouse Migration', minutes: 360 },
       { project: 'CRM System', minutes: 120 },
+    ],
+    partAbsences: [
+      {
+        type: AbsenceType.SICK_LEAVE,
+        date: weekDay(-1, WEDNESDAY),
+        minutes: 240,
+        work: [
+          {
+            project: 'Data Warehouse Migration',
+            activity: 'Backend',
+            minutes: 240,
+          },
+        ],
+      },
     ],
   },
   {

@@ -99,6 +99,7 @@ describe('ExpectedHoursService', () => {
     userId: string,
     startDate: string,
     endDate: string,
+    minutes: number | null = null,
   ) => {
     await dataSource.getRepository(Absence).save({
       companyId,
@@ -106,6 +107,7 @@ describe('ExpectedHoursService', () => {
       type: AbsenceType.VACATION,
       startDate,
       endDate,
+      minutes,
     });
   };
 
@@ -393,7 +395,7 @@ describe('ExpectedHoursService', () => {
 
       // Thursday's absence counts; Tuesday's and Wednesday's fall in the spell.
       expect(availability.get(returner)).toMatchObject({
-        absenceDates: ['2026-02-12'],
+        absenceDays: [{ date: '2026-02-12', type: AbsenceType.VACATION }],
         expectedDates: ['2026-02-09', '2026-02-13'],
       });
     });
@@ -439,6 +441,48 @@ describe('ExpectedHoursService', () => {
       await setAbsence(fullTimer, '2026-02-14', SUNDAY);
 
       await expect(expectedFor(fullTimer)).resolves.toBe(FULL_WEEK);
+    });
+
+    it('takes part of a day off that day alone, which stays a day expected', async () => {
+      await setAbsence(fullTimer, '2026-02-10', '2026-02-10', 145);
+
+      const availability = await service.availabilityToDateFor(
+        companyId,
+        [fullTimer],
+        MONDAY,
+        SUNDAY,
+      );
+
+      expect(availability.get(fullTimer)).toMatchObject({
+        availableMinutes: FULL_WEEK - 145,
+        absenceDays: [],
+        partAbsenceDays: [{ date: '2026-02-10', minutes: 145 }],
+        expectedDates: [
+          MONDAY,
+          '2026-02-10',
+          '2026-02-11',
+          '2026-02-12',
+          FRIDAY,
+        ],
+      });
+    });
+
+    it('takes no more than the day has once the hours drop below the part away', async () => {
+      await setCapacity(fullTimer, 5 * 60, MONDAY);
+      await setAbsence(fullTimer, '2026-02-10', '2026-02-10', 145);
+
+      const availability = await service.availabilityToDateFor(
+        companyId,
+        [fullTimer],
+        MONDAY,
+        SUNDAY,
+      );
+
+      // A 1h day: the absence takes that hour, and the day expects nothing.
+      expect(availability.get(fullTimer)).toMatchObject({
+        availableMinutes: 4 * 60,
+        partAbsenceDays: [{ date: '2026-02-10', minutes: 60 }],
+      });
     });
   });
 
