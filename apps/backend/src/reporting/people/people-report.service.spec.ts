@@ -2,7 +2,8 @@ import 'reflect-metadata';
 import { BadRequestException } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 
-import { AppDataSource } from 'src/data-source';
+import { openTestDataSource } from 'src/lib/testing/data-source';
+import { buildServices } from 'src/lib/testing/services';
 import { Company } from 'src/companies/entities/company.entity';
 import { User } from 'src/users/entities/user.entity';
 import { UserInactivePeriod } from 'src/users/entities/user-inactive-period.entity';
@@ -11,7 +12,6 @@ import { Team } from 'src/teams/entities/team.entity';
 import { TeamMembership } from 'src/teams/entities/team-membership.entity';
 import { TeamRole } from 'src/teams/enums/team-role.enum';
 import { TeamStatus } from 'src/teams/enums/team-status.enum';
-import { TeamVisibilityService } from 'src/teams/team-visibility.service';
 import { Activity } from 'src/activities/entities/activity.entity';
 import { ActCategory } from 'src/activity-categories/entities/activities-category.entity';
 import { Project } from 'src/projects/entities/project.entity';
@@ -21,15 +21,11 @@ import { PlanningEntry } from 'src/planning/entities/planning-entry.entity';
 import { Absence } from 'src/absences/entities/absence.entity';
 import { AbsenceType } from 'src/absences/enums/absence-type.enum';
 import { UserCapacity } from 'src/capacity/entities/user-capacity.entity';
-import { CompanyStandardDay } from 'src/capacity/entities/company-standard-day.entity';
-import { CapacityService } from 'src/capacity/capacity.service';
 import { ExpectedHoursService } from 'src/capacity/expected-hours.service';
 import { addDays } from 'src/capacity/working-days.util';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 import { LONG_STANDING_ACCOUNT_CREATED_AT } from 'src/lib/testing/accounts';
 
-import { ReportingPeriod } from '../entities/reporting-period.entity';
-import { PeriodLocksService } from '../period-locks.service';
 import { ReportingService } from '../reporting.service';
 import { HoursReportGroupBy } from '../enums/hours-report-group-by.enum';
 import {
@@ -94,36 +90,10 @@ describe('PeopleReportService', () => {
   };
 
   beforeAll(async () => {
-    dataSource = await new DataSource({
-      ...AppDataSource.options,
-      logging: false,
-    }).initialize();
+    dataSource = await openTestDataSource();
 
-    const teamVisibility = new TeamVisibilityService(
-      dataSource.getRepository(TeamMembership),
-      dataSource.getRepository(User),
-    );
-    const periodLocks = new PeriodLocksService(
-      dataSource.getRepository(ReportingPeriod),
-    );
-    reporting = new ReportingService(
-      dataSource.getRepository(ReportingPeriod),
-      dataSource.getRepository(Company),
-      teamVisibility,
-      periodLocks,
-    );
-    const capacity = new CapacityService(
-      dataSource.getRepository(UserCapacity),
-      dataSource.getRepository(Company),
-      dataSource.getRepository(User),
-      dataSource.getRepository(UserInactivePeriod),
-      dataSource.getRepository(CompanyStandardDay),
-      periodLocks,
-    );
-    expectedHours = new ExpectedHoursService(
-      dataSource.getRepository(Absence),
-      capacity,
-    );
+    const { teamVisibility, ...services } = buildServices(dataSource);
+    ({ reporting, expectedHours } = services);
     service = new PeopleReportService(
       dataSource.getRepository(TimeLog),
       dataSource.getRepository(Company),

@@ -3,18 +3,17 @@ import { plainToInstance } from 'class-transformer';
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { DataSource, In } from 'typeorm';
 
-import { AppDataSource } from 'src/data-source';
+import { openTestDataSource } from 'src/lib/testing/data-source';
+import { buildServices } from 'src/lib/testing/services';
 import { waitUntilBlockedBy } from 'src/lib/testing/locks';
 import { Company } from 'src/companies/entities/company.entity';
 import { WeekDay } from 'src/companies/enums/week-day.enum';
 import { User } from 'src/users/entities/user.entity';
 import { UserInactivePeriod } from 'src/users/entities/user-inactive-period.entity';
 import { UserRole, UserStatus } from 'src/users/enums/user-role.enum';
-import { UsersService } from 'src/users/users.service';
 import { Team } from 'src/teams/entities/team.entity';
 import { TeamMembership } from 'src/teams/entities/team-membership.entity';
 import { TeamRole } from 'src/teams/enums/team-role.enum';
-import { TeamVisibilityService } from 'src/teams/team-visibility.service';
 import { Activity } from 'src/activities/entities/activity.entity';
 import { ActivitiesService } from 'src/activities/activities.service';
 import { Project } from 'src/projects/entities/project.entity';
@@ -23,7 +22,6 @@ import { ProjectStatus } from 'src/projects/enums/project-status.enum';
 import { ProjectsService } from 'src/projects/projects.service';
 import { ReportingPeriod } from 'src/reporting/entities/reporting-period.entity';
 import { ReportingPeriodStatus } from 'src/reporting/enums/reporting-period-status.enum';
-import { PeriodLocksService } from 'src/reporting/period-locks.service';
 import {
   firstDayOfMonth,
   lastDayOfMonth,
@@ -31,8 +29,6 @@ import {
 import { Absence } from 'src/absences/entities/absence.entity';
 import { AbsenceType } from 'src/absences/enums/absence-type.enum';
 import { UserCapacity } from 'src/capacity/entities/user-capacity.entity';
-import { CompanyStandardDay } from 'src/capacity/entities/company-standard-day.entity';
-import { CapacityService } from 'src/capacity/capacity.service';
 import { ExpectedHoursService } from 'src/capacity/expected-hours.service';
 import {
   eachDate,
@@ -206,42 +202,10 @@ describe('PlanningService', () => {
     });
 
   beforeAll(async () => {
-    dataSource = await new DataSource({
-      ...AppDataSource.options,
-      logging: false,
-    }).initialize();
+    dataSource = await openTestDataSource();
 
-    const teamVisibility = new TeamVisibilityService(
-      dataSource.getRepository(TeamMembership),
-      dataSource.getRepository(User),
-    );
-
-    const periodLocks = new PeriodLocksService(
-      dataSource.getRepository(ReportingPeriod),
-    );
-
-    const capacity = new CapacityService(
-      dataSource.getRepository(UserCapacity),
-      dataSource.getRepository(Company),
-      dataSource.getRepository(User),
-      dataSource.getRepository(UserInactivePeriod),
-      dataSource.getRepository(CompanyStandardDay),
-      periodLocks,
-    );
-    expectedHours = new ExpectedHoursService(
-      dataSource.getRepository(Absence),
-      capacity,
-    );
-
-    service = new PlanningService(
-      dataSource.getRepository(PlanningEntry),
-      dataSource.getRepository(Project),
-      teamVisibility,
-      periodLocks,
-      expectedHours,
-      capacity,
-      dataSource,
-    );
+    const { teamVisibility, users, ...services } = buildServices(dataSource);
+    ({ expectedHours, planning: service } = services);
 
     projects = new ProjectsService(
       dataSource.getRepository(Project),
@@ -251,13 +215,7 @@ describe('PlanningService', () => {
         findActiveOnlyMany: (ids: string[]) =>
           dataSource.getRepository(Activity).findBy({ id: In(ids) }),
       }),
-      new UsersService(
-        dataSource.getRepository(User),
-        teamVisibility,
-        dataSource,
-        stub<CapacityService>({}),
-        stub<PeriodLocksService>({}),
-      ),
+      users,
       teamVisibility,
       service,
       dataSource,

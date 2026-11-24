@@ -7,7 +7,8 @@ import {
 import { plainToInstance } from 'class-transformer';
 import { DataSource, In } from 'typeorm';
 
-import { AppDataSource } from 'src/data-source';
+import { openTestDataSource } from 'src/lib/testing/data-source';
+import { buildServices } from 'src/lib/testing/services';
 import { Company } from 'src/companies/entities/company.entity';
 import { User } from 'src/users/entities/user.entity';
 import { UserInactivePeriod } from 'src/users/entities/user-inactive-period.entity';
@@ -15,7 +16,6 @@ import { UserRole, UserStatus } from 'src/users/enums/user-role.enum';
 import { Team } from 'src/teams/entities/team.entity';
 import { TeamMembership } from 'src/teams/entities/team-membership.entity';
 import { TeamRole } from 'src/teams/enums/team-role.enum';
-import { TeamVisibilityService } from 'src/teams/team-visibility.service';
 import { ActCategory } from 'src/activity-categories/entities/activities-category.entity';
 import { Activity } from 'src/activities/entities/activity.entity';
 import { Project } from 'src/projects/entities/project.entity';
@@ -23,12 +23,6 @@ import { ProjectStatus } from 'src/projects/enums/project-status.enum';
 import { ProjectActivity } from 'src/projects/entities/project-activity.entity';
 import { ReportingPeriod } from 'src/reporting/entities/reporting-period.entity';
 import { ReportingPeriodStatus } from 'src/reporting/enums/reporting-period-status.enum';
-import { PeriodLocksService } from 'src/reporting/period-locks.service';
-import { Absence } from 'src/absences/entities/absence.entity';
-import { UserCapacity } from 'src/capacity/entities/user-capacity.entity';
-import { CompanyStandardDay } from 'src/capacity/entities/company-standard-day.entity';
-import { CapacityService } from 'src/capacity/capacity.service';
-import { ExpectedHoursService } from 'src/capacity/expected-hours.service';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 import {
   freezeAtFirstLockedSecond,
@@ -115,38 +109,9 @@ describe('TimeLogsService write scope', () => {
   };
 
   beforeAll(async () => {
-    dataSource = await new DataSource({
-      ...AppDataSource.options,
-      logging: false,
-    }).initialize();
+    dataSource = await openTestDataSource();
 
-    const teamVisibility = new TeamVisibilityService(
-      dataSource.getRepository(TeamMembership),
-      dataSource.getRepository(User),
-    );
-
-    const periodLocks = new PeriodLocksService(
-      dataSource.getRepository(ReportingPeriod),
-    );
-
-    const capacity = new CapacityService(
-      dataSource.getRepository(UserCapacity),
-      dataSource.getRepository(Company),
-      dataSource.getRepository(User),
-      dataSource.getRepository(UserInactivePeriod),
-      dataSource.getRepository(CompanyStandardDay),
-      periodLocks,
-    );
-
-    service = new TimeLogsService(
-      dataSource.getRepository(TimeLog),
-      dataSource.getRepository(ProjectActivity),
-      periodLocks,
-      teamVisibility,
-      new ExpectedHoursService(dataSource.getRepository(Absence), capacity),
-      capacity,
-      dataSource,
-    );
+    ({ timeLogs: service } = buildServices(dataSource));
 
     const company = await dataSource
       .getRepository(Company)

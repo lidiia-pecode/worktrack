@@ -2,12 +2,12 @@ import 'reflect-metadata';
 import { BadRequestException, ConflictException } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 
-import { AppDataSource } from 'src/data-source';
+import { openTestDataSource } from 'src/lib/testing/data-source';
+import { buildServices } from 'src/lib/testing/services';
 import { Company } from 'src/companies/entities/company.entity';
 import { User } from 'src/users/entities/user.entity';
 import { UserRole, UserStatus } from 'src/users/enums/user-role.enum';
 import { TeamMembership } from 'src/teams/entities/team-membership.entity';
-import { TeamVisibilityService } from 'src/teams/team-visibility.service';
 import { addDays, todayISODate } from 'src/capacity/working-days.util';
 import {
   freezeAtFirstLockedSecond,
@@ -99,21 +99,9 @@ describe('ReportingService', () => {
   const newestLocked = latestAutoLockedMonth(today);
 
   beforeAll(async () => {
-    dataSource = await new DataSource({
-      ...AppDataSource.options,
-      logging: false,
-    }).initialize();
+    dataSource = await openTestDataSource();
 
-    locks = new PeriodLocksService(dataSource.getRepository(ReportingPeriod));
-    service = new ReportingService(
-      dataSource.getRepository(ReportingPeriod),
-      dataSource.getRepository(Company),
-      new TeamVisibilityService(
-        dataSource.getRepository(TeamMembership),
-        dataSource.getRepository(User),
-      ),
-      locks,
-    );
+    ({ periodLocks: locks, reporting: service } = buildServices(dataSource));
 
     const company = await dataSource
       .getRepository(Company)
