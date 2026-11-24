@@ -93,8 +93,8 @@ Worth knowing when changing CI or the `main` ruleset ("Protect main"):
 - The required checks match the job names exactly: `Frontend`, `Backend` and
   `Vercel`, with no `ci /` prefix. A misspelt name waits for ever and blocks
   every pull request.
-- Required approvals stay at 0 while one person works on the repository, since
-  nobody can approve their own pull request.
+- Required approvals are set to 0, since nobody can approve their own pull
+  request; raise it once more than one person works on the repository.
 - Migrations run before the backend tests: on an empty database every suite
   fails with `relation "companies" does not exist`.
 - The frontend's `tsconfig.json` includes `.next/types`, so after a route is
@@ -371,7 +371,7 @@ rows — that is what the local populated-database test and the Neon run are for
 
 #### Who does what
 
-There is one environment and one person deploying to it, so "who" mostly means
+There is one environment and no separate release role, so "who" mostly means
 "what must not be skipped".
 
 | Step | Done by |

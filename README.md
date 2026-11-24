@@ -43,8 +43,10 @@ worktrack/
 ### Prerequisites
 
 - Node.js 22 (see `.nvmrc`) and npm
-- Docker with Docker Compose, for PostgreSQL. On macOS with colima, 2 CPUs and
-  2 GB are plenty: `colima start --cpu 2 --memory 2`
+- Docker with Docker Compose, for PostgreSQL. The Makefile calls the
+  `docker-compose` command; if you only have the `docker compose` plugin,
+  change the first line of the `Makefile` to match. On macOS with colima,
+  2 CPUs and 2 GB are plenty: `colima start --cpu 2 --memory 2`
 
 ### Installation
 
@@ -76,9 +78,10 @@ This starts PostgreSQL, runs all database migrations and seeds the test data.
 and activities, time and absences from 1 June 2026 up to the day you seed and
 plans a few weeks ahead, plus the edge cases the tests and screens need (someone
 on no team, long names, archived and deactivated records). Running it again adds only what is missing;
-to rebuild everything, run `make down-hard` and then `make setup`. The logins
-are written to `apps/backend/docs/TEST-CREDENTIALS.md` (ignored by Git) every
-time you seed. What gets created, and the optional `SEED_*` settings it reads,
+to rebuild everything, run `make down-hard` and then `make setup`. The seed
+ends by printing the owner's login and the one password every test account
+shares, and writes all the logins to `apps/backend/docs/TEST-CREDENTIALS.md`
+(ignored by Git) every time you seed. What gets created, and the optional `SEED_*` settings it reads,
 are in `apps/backend/src/seed/seed-config.ts`.
 
 The seed writes only to a local database: it stops before connecting when
@@ -93,8 +96,10 @@ make dev
 
 This starts PostgreSQL in Docker, then the backend (<http://localhost:3001>)
 and the frontend (<http://localhost:3000>) in the same terminal, each line
-prefixed with the app it came from. Both reload on file changes. `Ctrl+C` stops
-the two apps; PostgreSQL keeps running until `make down`.
+prefixed with the app it came from. The frontend is ready first: wait for the
+backend's `Nest application successfully started` line before opening the app,
+or the first page shows "Something went wrong". Both reload on file changes.
+`Ctrl+C` stops the two apps; PostgreSQL keeps running until `make down`.
 
 After pulling a change to `package.json` or `package-lock.json`, run
 `npm install` again.
@@ -186,8 +191,9 @@ It is off in production unless `ENABLE_SWAGGER=true` is set.
 
 ## Current Status
 
-Under active development, on a shared development stand with test data only;
-there is no production environment yet, by decision. What works today, the test
+Under active development, on a shared development stand (the one hosted copy,
+on Vercel, Render and Neon) with test data only; there is no production
+environment yet, by decision. What works today, the test
 coverage and the engineering state are in
 [`docs/business_architecture_docs.md`](docs/business_architecture_docs.md) §6;
 how the stand is deployed is in [`docs/workflow.md`](docs/workflow.md).

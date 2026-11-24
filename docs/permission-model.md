@@ -128,7 +128,8 @@ add reach without changing anyone's membership.
 the days they were in them, plus themselves; an Owner sees everyone. Nobody
 else's name, profile, time or plan is readable, on any screen, by any route.
 Sharing a project grants nothing: a separate "identity" tier for people on a
-shared project would hand back the names `GET /users` refuses (D10), and every
+shared project would hand back the names `GET /users` refuses (D10; the
+numbered decisions are in the business reference's §2), and every
 new endpoint would have to choose a tier.
 
 What is given up: a manager can't tell who else is on a cross-team project, and
@@ -165,7 +166,7 @@ members.
   have a project to log against.
 - **Active status gates joining, not staying.** Only an active user is newly
   assigned to a project or a team; deactivating someone removes no membership,
-  so reactivating restores nothing (business §8 rule 6).
+  so reactivating restores nothing (business §7 rule 6).
 
 **Archiving or restoring a project is the Owner's**, since archiving removes
 everyone's plans on it from today on, people outside any one manager's reach
@@ -209,7 +210,8 @@ rule trustworthy.
   manager. A manager's
   project save only removes people they were shown, so they can never clear
   plans for someone outside their teams.
-- **Whoever made the removed plans is told within their reach.** The notice
+- **Whoever last changed the removed plans, or made them, is told within
+  their reach.** The notice
   covers only the plans on days its recipient can still read for that person,
   goes only to someone active who didn't record the absence, and never names
   the absence's type, so a manager whose person has moved to another team
