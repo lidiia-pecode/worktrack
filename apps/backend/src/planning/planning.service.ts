@@ -48,7 +48,8 @@ import {
   VisibleUser,
 } from 'src/teams/team-visibility.service';
 import { ProjectStatus } from 'src/projects/enums/project-status.enum';
-import { ReportingService } from 'src/reporting/reporting.service';
+import { lockUser } from 'src/users/lock-user.util';
+import { PeriodLocksService } from 'src/reporting/period-locks.service';
 import { ExpectedHoursService } from 'src/capacity/expected-hours.service';
 import { CapacityService } from 'src/capacity/capacity.service';
 import {
@@ -62,7 +63,6 @@ import { assertDateRange } from 'src/reporting/date-range.util';
 import {
   firstDayOfMonth,
   lastDayOfMonth,
-  monthsBetween,
 } from 'src/reporting/reporting-months.util';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 import { pageOffset } from 'src/lib/dtos/pagination-query.dto';
@@ -146,7 +146,7 @@ export class PlanningService {
     @InjectRepository(Project)
     private readonly projectRepo: Repository<Project>,
     private readonly teamVisibility: TeamVisibilityService,
-    private readonly reportingService: ReportingService,
+    private readonly periodLocks: PeriodLocksService,
     private readonly expectedHours: ExpectedHoursService,
     private readonly capacity: CapacityService,
     private readonly dataSource: DataSource,
@@ -460,15 +460,6 @@ export class PlanningService {
     };
   }
 
-  async getById(id: string, user: AuthUser): Promise<PlanningEntry> {
-    const qb = this.buildBaseQuery().where('p.id = :id', { id });
-    this.applyVisibilityFilter(qb, user);
-
-    const entry = await qb.getOne();
-    if (!entry) throw new NotFoundException('Planning entry not found');
-    return entry;
-  }
-
   // ==========================================
   // WRITE
   // ==========================================
@@ -529,7 +520,7 @@ export class PlanningService {
       // Reach first, so nobody outside it is locked or described; it is
       // checked again under the lock.
       await this.daysOutsideReach(userId, user, startDate, endDate);
-      await this.lockUser(manager, userId, user.companyId);
+      await lockUser(manager, userId, user.companyId);
 
       const { plannedDays, problems, writes } = await this.resolvePeriod(
         payload,
@@ -700,7 +691,7 @@ export class PlanningService {
       // again under the lock; the delete keeps to the days in reach. A
       // deactivated person's leftover plans can still be cleared.
       await this.daysOutsideReach(userId, user, startDate, endDate);
-      await this.lockUser(manager, userId, user.companyId);
+      await lockUser(manager, userId, user.companyId);
       await this.lockProject(manager, projectId, user.companyId);
       await this.daysOutsideReach(userId, user, startDate, endDate);
       await this.assertPeriodNotLocked(
@@ -766,22 +757,6 @@ export class PlanningService {
   // ==========================================
   // AUTHORIZATION HELPERS
   // ==========================================
-
-  /** Refuses a plan on `date` unless the caller may plan the person then. */
-  private async assertCanPlanForUser(
-    userId: string,
-    user: AuthUser,
-    date: string,
-  ): Promise<void> {
-    if (user.role === UserRole.EMPLOYEE) {
-      throw new ForbiddenException('Employees cannot change planning');
-    }
-
-    await this.teamVisibility.assertCanWriteUser(userId, user, PLAN_WORDING, {
-      from: date,
-      to: date,
-    });
-  }
 
   /**
    * The days of a period the caller may not plan the person on, which a
@@ -922,24 +897,13 @@ export class PlanningService {
     startDate: string,
     endDate: string,
   ): Promise<void> {
-    for (const month of monthsBetween(startDate, endDate)) {
-      if (
-        await this.reportingService.isRangeLocked(
-          companyId,
-          month,
-          month,
-          manager,
-        )
-      ) {
-        const name = new Date(`${month}T00:00:00Z`).toLocaleDateString(
-          'en-GB',
-          { month: 'long', year: 'numeric', timeZone: 'UTC' },
-        );
-        throw new ForbiddenException(
-          `Cannot plan in ${name} because it is a locked reporting period.`,
-        );
-      }
-    }
+    await this.periodLocks.assertRangeOpen(
+      manager,
+      companyId,
+      startDate,
+      endDate,
+      "it can't be planned",
+    );
   }
 
   /**
@@ -1003,19 +967,6 @@ export class PlanningService {
     }));
   }
 
-  /** Runs inside the write's transaction, so a Close at the same moment waits for it. */
-  private async assertDateNotLocked(
-    manager: EntityManager,
-    companyId: string,
-    date: string,
-  ): Promise<void> {
-    if (await this.reportingService.isDateLocked(companyId, date, manager)) {
-      throw new ForbiddenException(
-        `Cannot change planning for ${date} because it belongs to a locked reporting period.`,
-      );
-    }
-  }
-
   private async assertActiveUser(
     userId: string,
     companyId: string,
@@ -1032,20 +983,5 @@ export class PlanningService {
         'Planning can only be created for active users',
       );
     }
-  }
-
-  private async lockUser(
-    manager: EntityManager,
-    userId: string,
-    companyId: string,
-  ): Promise<void> {
-    const user = await manager
-      .createQueryBuilder(User, 'u')
-      .setLock('pessimistic_write')
-      .where('u.id = :userId', { userId })
-      .andWhere('u.company_id = :companyId', { companyId })
-      .getOne();
-
-    if (!user) throw new NotFoundException('User not found');
   }
 }

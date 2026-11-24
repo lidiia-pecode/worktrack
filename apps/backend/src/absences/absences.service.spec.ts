@@ -21,7 +21,7 @@ import { Project } from 'src/projects/entities/project.entity';
 import { ProjectActivity } from 'src/projects/entities/project-activity.entity';
 import { ReportingPeriod } from 'src/reporting/entities/reporting-period.entity';
 import { ReportingPeriodStatus } from 'src/reporting/enums/reporting-period-status.enum';
-import { ReportingService } from 'src/reporting/reporting.service';
+import { PeriodLocksService } from 'src/reporting/period-locks.service';
 import { TimeLog } from 'src/time-logs/entities/time-log.entity';
 import { TimeLogsService } from 'src/time-logs/time-logs.service';
 import { PlanningEntry } from 'src/planning/entities/planning-entry.entity';
@@ -150,10 +150,8 @@ describe('AbsencesService', () => {
       dataSource.getRepository(User),
     );
 
-    const reporting = new ReportingService(
+    const periodLocks = new PeriodLocksService(
       dataSource.getRepository(ReportingPeriod),
-      dataSource.getRepository(Company),
-      teamVisibility,
     );
 
     const capacity = new CapacityService(
@@ -162,12 +160,12 @@ describe('AbsencesService', () => {
       dataSource.getRepository(User),
       dataSource.getRepository(UserInactivePeriod),
       dataSource.getRepository(CompanyStandardDay),
-      reporting,
+      periodLocks,
     );
 
     service = new AbsencesService(
       dataSource.getRepository(Absence),
-      reporting,
+      periodLocks,
       teamVisibility,
       capacity,
       new NotificationsService(dataSource.getRepository(Notification)),
@@ -177,7 +175,7 @@ describe('AbsencesService', () => {
     timeLogs = new TimeLogsService(
       dataSource.getRepository(TimeLog),
       dataSource.getRepository(ProjectActivity),
-      reporting,
+      periodLocks,
       teamVisibility,
       new ExpectedHoursService(dataSource.getRepository(Absence), capacity),
       capacity,

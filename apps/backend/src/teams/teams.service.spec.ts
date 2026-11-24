@@ -22,6 +22,8 @@ import { Invitation } from 'src/invitations/entities/invitation.entity';
 import { InvitationStatus } from 'src/invitations/enums/invitation-status.enum';
 
 import { TeamVisibilityService } from './team-visibility.service';
+import { PeriodLocksService } from 'src/reporting/period-locks.service';
+import { ReportingPeriod } from 'src/reporting/entities/reporting-period.entity';
 import { PreviousManager, TeamsQuery } from './dtos/team.dto';
 import { TeamsService } from './teams.service';
 
@@ -127,6 +129,7 @@ describe('TeamsService', () => {
         dataSource.getRepository(User),
       ),
       dataSource,
+      new PeriodLocksService(dataSource.getRepository(ReportingPeriod)),
     );
 
     owner = await createUser('owner', UserRole.OWNER);

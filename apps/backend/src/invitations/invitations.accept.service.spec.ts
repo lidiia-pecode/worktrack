@@ -17,7 +17,7 @@ import { User } from 'src/users/entities/user.entity';
 import { UserRole, UserStatus } from 'src/users/enums/user-role.enum';
 import { UsersService } from 'src/users/users.service';
 import { CapacityService } from 'src/capacity/capacity.service';
-import { ReportingService } from 'src/reporting/reporting.service';
+import { PeriodLocksService } from 'src/reporting/period-locks.service';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 
 import { Invitation } from './entities/invitation.entity';
@@ -152,7 +152,7 @@ describe('InvitationsService acceptance', () => {
         teamVisibility,
         dataSource,
         stub<CapacityService>({}),
-        stub<ReportingService>({}),
+        stub<PeriodLocksService>({}),
       ),
       stub({ sendInvitationEmail: jest.fn().mockResolvedValue(undefined) }),
       stub({

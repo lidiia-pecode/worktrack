@@ -1,6 +1,5 @@
 import {
   BadRequestException,
-  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -20,7 +19,9 @@ import { User } from 'src/users/entities/user.entity';
 import { UserStatus } from 'src/users/enums/user-role.enum';
 import { UserInactivePeriod } from 'src/users/entities/user-inactive-period.entity';
 import { PlanningEntry } from 'src/planning/entities/planning-entry.entity';
-import { ReportingService } from 'src/reporting/reporting.service';
+import { formatDay } from 'src/lib/utils/format-day.util';
+import { lockUser } from 'src/users/lock-user.util';
+import { PeriodLocksService } from 'src/reporting/period-locks.service';
 import { DaySpan } from 'src/teams/days-in-view.util';
 
 import { UserCapacity } from './entities/user-capacity.entity';
@@ -90,7 +91,7 @@ export class CapacityService {
     private readonly inactivePeriodRepo: Repository<UserInactivePeriod>,
     @InjectRepository(CompanyStandardDay)
     private readonly standardDayRepo: Repository<CompanyStandardDay>,
-    private readonly reportingService: ReportingService,
+    private readonly periodLocks: PeriodLocksService,
   ) {}
 
   async calendarFor(companyId: string): Promise<CompanyCalendar> {
@@ -338,28 +339,20 @@ export class CapacityService {
     const today = await this.today(companyId);
 
     // The lock check runs inside the write's transaction, so a Close at the
-    // same moment waits for it (see ReportingService.isRangeLocked).
+    // same moment waits for it (see PeriodLocksService).
     await this.repo.manager.transaction(async (manager) => {
       // A change effective on or before the last closed day would silently
       // rewrite what was expected of somebody in a month already signed off.
-      const lockedUntil = await this.reportingService.latestLockedDate(
-        companyId,
+      await this.periodLocks.assertAfterLockedMonths(
         manager,
+        companyId,
+        validFrom,
+        `Working hours can't change from ${formatDay(validFrom)}`,
       );
-
-      if (validFrom <= lockedUntil) {
-        throw new ForbiddenException(
-          `Cannot change capacity from ${validFrom}: periods are locked up to ${lockedUntil}, and the change would alter what was expected then.`,
-        );
-      }
 
       // One change waits ahead at a time: scheduling another replaces it.
       // Saves for the same person queue on their row, so two can't both stay.
-      await manager.findOne(User, {
-        where: { id: userId, companyId },
-        select: ['id'],
-        lock: { mode: 'pessimistic_write' },
-      });
+      await lockUser(manager, userId, companyId);
       if (validFrom > today) {
         await manager.delete(UserCapacity, {
           companyId,
@@ -507,15 +500,12 @@ export class CapacityService {
       });
       if (!company) throw new NotFoundException('Company not found');
 
-      const lockedUntil = await this.reportingService.latestLockedDate(
-        companyId,
+      await this.periodLocks.assertAfterLockedMonths(
         manager,
+        companyId,
+        validFrom,
+        `The standard day can't change from ${formatDay(validFrom)}`,
       );
-      if (validFrom <= lockedUntil) {
-        throw new ForbiddenException(
-          `The standard day can't change from ${validFrom}: months up to ${lockedUntil} are locked, and their expected hours would change.`,
-        );
-      }
 
       if (validFrom > today) {
         await manager.delete(CompanyStandardDay, {

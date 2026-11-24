@@ -28,7 +28,9 @@ import { findActiveTeam } from './find-active-team.util';
 import { TeamRole } from './enums/team-role.enum';
 import { findCompanyToday } from 'src/companies/company-today.util';
 import { Company } from 'src/companies/entities/company.entity';
-import { findLatestLockedDate } from 'src/reporting/latest-locked-date.util';
+import { formatDay } from 'src/lib/utils/format-day.util';
+import { lockUser } from 'src/users/lock-user.util';
+import { PeriodLocksService } from 'src/reporting/period-locks.service';
 import { addDays, isoDateIn } from 'src/capacity/working-days.util';
 import { Invitation } from 'src/invitations/entities/invitation.entity';
 import { InvitationStatus } from 'src/invitations/enums/invitation-status.enum';
@@ -50,6 +52,7 @@ export class TeamsService {
     private readonly teamRepo: Repository<Team>,
     private readonly teamVisibility: TeamVisibilityService,
     private readonly dataSource: DataSource,
+    private readonly periodLocks: PeriodLocksService,
   ) {}
 
   /**
@@ -85,29 +88,6 @@ export class TeamsService {
         'You can only change the membership of teams you lead',
       );
     }
-  }
-
-  /**
-   * Locks the person's row, so two changes that would each place them in a
-   * team run one after the other and the second sees the first.
-   */
-  private async lockPerson(
-    manager: EntityManager,
-    companyId: string,
-    userId: string,
-  ): Promise<User> {
-    const user = await manager.getRepository(User).findOne({
-      where: { id: userId, companyId },
-      lock: { mode: 'pessimistic_write' },
-    });
-
-    if (!user) {
-      throw new NotFoundException(
-        `User with id ${userId} not found in this company`,
-      );
-    }
-
-    return user;
   }
 
   /** The one team the person is in now, other than this one, whatever their role in it. */
@@ -148,12 +128,12 @@ export class TeamsService {
       );
     }
 
-    const lockedUntil = await findLatestLockedDate(manager, companyId, true);
-    if (date <= lockedUntil) {
-      throw new ForbiddenException(
-        `A team change can't be dated ${date}: months up to ${lockedUntil} are locked`,
-      );
-    }
+    await this.periodLocks.assertAfterLockedMonths(
+      manager,
+      companyId,
+      date,
+      `A team change can't be dated ${formatDay(date)}`,
+    );
 
     return date;
   }
@@ -457,7 +437,7 @@ export class TeamsService {
         'Cannot add members to an archived team',
         { lock: 'share' },
       );
-      const user = await this.lockPerson(manager, companyId, dto.userId);
+      const user = await lockUser(manager, dto.userId, companyId);
       this.assertCanJoinTeam(user);
 
       const trxMembershipRepo = manager.getRepository(TeamMembership);
@@ -565,7 +545,7 @@ export class TeamsService {
         );
       }
 
-      const newManager = await this.lockPerson(manager, companyId, dto.userId);
+      const newManager = await lockUser(manager, dto.userId, companyId);
       if (newManager.status !== UserStatus.ACTIVE) {
         throw new BadRequestException(
           'A deactivated person cannot lead a team',

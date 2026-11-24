@@ -23,7 +23,7 @@ import { ProjectStatus } from 'src/projects/enums/project-status.enum';
 import { ProjectActivity } from 'src/projects/entities/project-activity.entity';
 import { ReportingPeriod } from 'src/reporting/entities/reporting-period.entity';
 import { ReportingPeriodStatus } from 'src/reporting/enums/reporting-period-status.enum';
-import { ReportingService } from 'src/reporting/reporting.service';
+import { PeriodLocksService } from 'src/reporting/period-locks.service';
 import { Absence } from 'src/absences/entities/absence.entity';
 import { UserCapacity } from 'src/capacity/entities/user-capacity.entity';
 import { CompanyStandardDay } from 'src/capacity/entities/company-standard-day.entity';
@@ -125,10 +125,8 @@ describe('TimeLogsService write scope', () => {
       dataSource.getRepository(User),
     );
 
-    const reporting = new ReportingService(
+    const periodLocks = new PeriodLocksService(
       dataSource.getRepository(ReportingPeriod),
-      dataSource.getRepository(Company),
-      teamVisibility,
     );
 
     const capacity = new CapacityService(
@@ -137,13 +135,13 @@ describe('TimeLogsService write scope', () => {
       dataSource.getRepository(User),
       dataSource.getRepository(UserInactivePeriod),
       dataSource.getRepository(CompanyStandardDay),
-      reporting,
+      periodLocks,
     );
 
     service = new TimeLogsService(
       dataSource.getRepository(TimeLog),
       dataSource.getRepository(ProjectActivity),
-      reporting,
+      periodLocks,
       teamVisibility,
       new ExpectedHoursService(dataSource.getRepository(Absence), capacity),
       capacity,
@@ -302,7 +300,7 @@ describe('TimeLogsService write scope', () => {
     it('checks project membership against the entry owner, not the caller', async () => {
       await expect(
         service.create(logFor(unassigned.id), manager),
-      ).rejects.toThrow(ForbiddenException);
+      ).rejects.toThrow(BadRequestException);
     });
 
     it('counts the daily limit against the entry owner', async () => {
@@ -542,7 +540,7 @@ describe('TimeLogsService write scope', () => {
 
       await expect(
         service.update(id, { projectActivityId: elsewherePair.id }, owner),
-      ).rejects.toThrow(ForbiddenException);
+      ).rejects.toThrow(BadRequestException);
     });
 
     it('clears a note', async () => {

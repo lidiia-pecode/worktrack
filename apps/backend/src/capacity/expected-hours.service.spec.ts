@@ -15,7 +15,7 @@ import { TeamMembership } from 'src/teams/entities/team-membership.entity';
 import { TeamVisibilityService } from 'src/teams/team-visibility.service';
 import { ReportingPeriod } from 'src/reporting/entities/reporting-period.entity';
 import { ReportingPeriodStatus } from 'src/reporting/enums/reporting-period-status.enum';
-import { ReportingService } from 'src/reporting/reporting.service';
+import { PeriodLocksService } from 'src/reporting/period-locks.service';
 import { monthsBetween } from 'src/reporting/reporting-months.util';
 import { Project } from 'src/projects/entities/project.entity';
 import { ProjectActivity } from 'src/projects/entities/project-activity.entity';
@@ -125,10 +125,8 @@ describe('ExpectedHoursService', () => {
       dataSource.getRepository(User),
     );
 
-    const reporting = new ReportingService(
+    const periodLocks = new PeriodLocksService(
       dataSource.getRepository(ReportingPeriod),
-      dataSource.getRepository(Company),
-      teamVisibility,
     );
 
     capacity = new CapacityService(
@@ -137,7 +135,7 @@ describe('ExpectedHoursService', () => {
       dataSource.getRepository(User),
       dataSource.getRepository(UserInactivePeriod),
       dataSource.getRepository(CompanyStandardDay),
-      reporting,
+      periodLocks,
     );
 
     service = new ExpectedHoursService(
@@ -148,7 +146,7 @@ describe('ExpectedHoursService', () => {
     timeLogs = new TimeLogsService(
       dataSource.getRepository(TimeLog),
       dataSource.getRepository(ProjectActivity),
-      reporting,
+      periodLocks,
       teamVisibility,
       service,
       capacity,

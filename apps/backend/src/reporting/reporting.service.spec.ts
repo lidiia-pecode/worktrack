@@ -29,6 +29,7 @@ import { ReportingMonthState } from './enums/reporting-month-state.enum';
 import { HoursReportGroupBy } from './enums/hours-report-group-by.enum';
 import { HoursBilling } from './enums/hours-billing.enum';
 import { HoursReportRow, ReportingService } from './reporting.service';
+import { PeriodLocksService } from './period-locks.service';
 import {
   addMonths,
   editableUntil,
@@ -85,6 +86,7 @@ const SLUG = `reporting-test-${RUN}`;
 describe('ReportingService', () => {
   let dataSource: DataSource;
   let service: ReportingService;
+  let locks: PeriodLocksService;
   let companyId: string;
   let ownerId: string;
 
@@ -102,6 +104,7 @@ describe('ReportingService', () => {
       logging: false,
     }).initialize();
 
+    locks = new PeriodLocksService(dataSource.getRepository(ReportingPeriod));
     service = new ReportingService(
       dataSource.getRepository(ReportingPeriod),
       dataSource.getRepository(Company),
@@ -109,6 +112,7 @@ describe('ReportingService', () => {
         dataSource.getRepository(TeamMembership),
         dataSource.getRepository(User),
       ),
+      locks,
     );
 
     const company = await dataSource
@@ -139,37 +143,83 @@ describe('ReportingService', () => {
 
   describe('automatic locking', () => {
     it('leaves the current month open', async () => {
-      await expect(service.isDateLocked(companyId, today)).resolves.toBe(false);
+      await expect(locks.isDateLocked(companyId, today)).resolves.toBe(false);
     });
 
     it('locks a month once its grace window has passed', async () => {
-      await expect(service.isDateLocked(companyId, lockedDate)).resolves.toBe(
+      await expect(locks.isDateLocked(companyId, lockedDate)).resolves.toBe(
         true,
       );
     });
 
     it('locks a range as soon as it touches a locked month', async () => {
       await expect(
-        service.isRangeLocked(companyId, lockedDate, today),
+        locks.isRangeLocked(companyId, lockedDate, today),
       ).resolves.toBe(true);
     });
 
     it('reports the end of the newest locked month', async () => {
-      await expect(service.latestLockedDate(companyId)).resolves.toBe(
+      await expect(locks.latestLockedDate(companyId)).resolves.toBe(
         lastDayOfMonth(newestLocked),
       );
+    });
+  });
+
+  describe('refusals', () => {
+    it('refuses a write that touches a locked month, saying who can reopen it', async () => {
+      await dataSource.transaction(async (manager) => {
+        await expect(
+          locks.assertRangeOpen(
+            manager,
+            companyId,
+            lockedDate,
+            today,
+            "it can't be planned",
+          ),
+        ).rejects.toThrow(
+          /is locked, so it can't be planned\. The owner can reopen the month in Periods\./,
+        );
+        await expect(
+          locks.assertRangeOpen(manager, companyId, today, today, 'unused'),
+        ).resolves.toBeUndefined();
+      });
+    });
+
+    it('refuses a change that starts on or before the newest locked day', async () => {
+      const lockedUntil = lastDayOfMonth(newestLocked);
+
+      await dataSource.transaction(async (manager) => {
+        await expect(
+          locks.assertAfterLockedMonths(
+            manager,
+            companyId,
+            lockedUntil,
+            "A change can't start then",
+          ),
+        ).rejects.toThrow(
+          /^A change can't start then: months up to .+ are locked\. The owner can reopen a month in Periods\.$/,
+        );
+        await expect(
+          locks.assertAfterLockedMonths(
+            manager,
+            companyId,
+            today,
+            "A change can't start then",
+          ),
+        ).resolves.toBeUndefined();
+      });
     });
   });
 
   describe('reopening', () => {
     it('makes a locked month writable until it is closed again', async () => {
       await service.reopenMonth(companyId, lockedMonthKey, ownerId);
-      await expect(service.isDateLocked(companyId, lockedDate)).resolves.toBe(
+      await expect(locks.isDateLocked(companyId, lockedDate)).resolves.toBe(
         false,
       );
 
       await service.closeMonth(companyId, lockedMonthKey, ownerId);
-      await expect(service.isDateLocked(companyId, lockedDate)).resolves.toBe(
+      await expect(locks.isDateLocked(companyId, lockedDate)).resolves.toBe(
         true,
       );
     });
@@ -179,7 +229,7 @@ describe('ReportingService', () => {
       await service.closeMonth(companyId, lockedMonthKey, ownerId);
       await service.reopenMonth(companyId, lockedMonthKey, ownerId);
 
-      await expect(service.isDateLocked(companyId, lockedDate)).resolves.toBe(
+      await expect(locks.isDateLocked(companyId, lockedDate)).resolves.toBe(
         false,
       );
     });
@@ -187,7 +237,7 @@ describe('ReportingService', () => {
     it('skips a reopened month when finding the newest locked one', async () => {
       await service.reopenMonth(companyId, toMonthKey(newestLocked), ownerId);
 
-      await expect(service.latestLockedDate(companyId)).resolves.toBe(
+      await expect(locks.latestLockedDate(companyId)).resolves.toBe(
         lastDayOfMonth(addMonths(newestLocked, -1)),
       );
     });
@@ -246,7 +296,7 @@ describe('ReportingService', () => {
         ]),
       ).rejects.toThrow(ConflictException);
 
-      await expect(service.isDateLocked(companyId, lockedDate)).resolves.toBe(
+      await expect(locks.isDateLocked(companyId, lockedDate)).resolves.toBe(
         false,
       );
     });
@@ -260,7 +310,7 @@ describe('ReportingService', () => {
       await dataSource.transaction(async (manager) => {
         // The write's lock check, which share-locks the reopened month's row.
         await expect(
-          service.isDateLocked(companyId, lockedDate, manager),
+          locks.isDateLocked(companyId, lockedDate, manager),
         ).resolves.toBe(false);
 
         closing = service
@@ -286,9 +336,9 @@ describe('ReportingService', () => {
 
       await dataSource.transaction(async (manager) => {
         // The capacity write's check, which share-locks the reopened row too.
-        await expect(
-          service.latestLockedDate(companyId, manager),
-        ).resolves.toBe(lastDayOfMonth(newestLocked));
+        await expect(locks.latestLockedDate(companyId, manager)).resolves.toBe(
+          lastDayOfMonth(newestLocked),
+        );
 
         closing = service
           .closeMonth(companyId, lockedMonthKey, ownerId)
@@ -382,7 +432,7 @@ describe('ReportingService', () => {
       freezeAtLastGraceSecond(MONTH, TIME_ZONE);
 
       await expect(stateOfMonth()).resolves.toBe(ReportingMonthState.GRACE);
-      await expect(service.isDateLocked(companyId, '2026-01-31')).resolves.toBe(
+      await expect(locks.isDateLocked(companyId, '2026-01-31')).resolves.toBe(
         false,
       );
     });
@@ -391,7 +441,7 @@ describe('ReportingService', () => {
       freezeAtFirstLockedSecond(MONTH, TIME_ZONE);
 
       await expect(stateOfMonth()).resolves.toBe(ReportingMonthState.LOCKED);
-      await expect(service.isDateLocked(companyId, '2026-01-31')).resolves.toBe(
+      await expect(locks.isDateLocked(companyId, '2026-01-31')).resolves.toBe(
         true,
       );
     });

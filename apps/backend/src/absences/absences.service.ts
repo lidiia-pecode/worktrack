@@ -1,7 +1,6 @@
 import {
   BadRequestException,
   ConflictException,
-  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -21,7 +20,11 @@ import { TeamVisibilityService } from 'src/teams/team-visibility.service';
 import { DateRange, isWithinSpan } from 'src/teams/days-in-view.util';
 import { NotificationsService } from 'src/notifications/notifications.service';
 import type { PlansRemovedDetails } from 'src/notifications/entities/notification.entity';
-import { ReportingService } from 'src/reporting/reporting.service';
+import { lockUser } from 'src/users/lock-user.util';
+import {
+  lockedMonthError,
+  PeriodLocksService,
+} from 'src/reporting/period-locks.service';
 import { CapacityService } from 'src/capacity/capacity.service';
 import {
   addDays,
@@ -62,7 +65,7 @@ export class AbsencesService {
   constructor(
     @InjectRepository(Absence)
     private readonly repo: Repository<Absence>,
-    private readonly reportingService: ReportingService,
+    private readonly periodLocks: PeriodLocksService,
     private readonly teamVisibility: TeamVisibilityService,
     private readonly capacity: CapacityService,
     private readonly notifications: NotificationsService,
@@ -216,7 +219,7 @@ export class AbsencesService {
     this.assertRange(payload.startDate, payload.endDate, minutes);
 
     return this.dataSource.transaction(async (manager) => {
-      await this.lockUser(manager, ownerId, user.companyId);
+      await lockUser(manager, ownerId, user.companyId);
       await this.assertRangeNotLocked(
         manager,
         user.companyId,
@@ -275,7 +278,7 @@ export class AbsencesService {
     const ownerId = await this.resolveWritableOwner(id, user, payload);
 
     return this.dataSource.transaction(async (manager) => {
-      await this.lockUser(manager, ownerId, user.companyId);
+      await lockUser(manager, ownerId, user.companyId);
 
       const absence = await this.getForUpdate(id, user.companyId, manager);
 
@@ -367,10 +370,10 @@ export class AbsencesService {
     const ownerId = await this.resolveWritableOwner(id, user);
 
     const trimmed = await this.dataSource.transaction(async (manager) => {
-      await this.lockUser(manager, ownerId, user.companyId);
+      await lockUser(manager, ownerId, user.companyId);
       const absence = await this.getForUpdate(id, user.companyId, manager);
       const lockedDays = lockedDaysIn(
-        await this.reportingService.lockedMonthsIn(
+        await this.periodLocks.lockedMonthsIn(
           user.companyId,
           absence.startDate,
           absence.endDate,
@@ -394,7 +397,7 @@ export class AbsencesService {
         (span, i) => i > 0 && span.from !== addDays(lockedDays[i - 1].to, 1),
       );
       if (keepsEveryDay || hasOpenDaysBetween) {
-        throw lockedAbsenceError(
+        throw lockedMonthError(
           `Cannot delete the absence from ${formatDay(absence.startDate)} to ${formatDay(absence.endDate)}: its days in a locked reporting period stay as they are.`,
         );
       }
@@ -458,7 +461,7 @@ export class AbsencesService {
     startDate: string,
     endDate: string,
   ): Promise<void> {
-    const isLocked = await this.reportingService.isRangeLocked(
+    const isLocked = await this.periodLocks.isRangeLocked(
       companyId,
       startDate,
       endDate,
@@ -466,7 +469,7 @@ export class AbsencesService {
     );
 
     if (isLocked) {
-      throw lockedAbsenceError(
+      throw lockedMonthError(
         `Cannot record an absence from ${formatDay(startDate)} to ${formatDay(endDate)}: it touches a locked reporting period.`,
       );
     }
@@ -485,7 +488,7 @@ export class AbsencesService {
     next: Pick<Absence, 'startDate' | 'endDate' | 'minutes'> &
       Pick<UpdateAbsencePayload, 'type' | 'note'>,
   ): Promise<DateRange[]> {
-    const lockedMonths = await this.reportingService.lockedMonthsIn(
+    const lockedMonths = await this.periodLocks.lockedMonthsIn(
       companyId,
       absence.startDate < next.startDate ? absence.startDate : next.startDate,
       absence.endDate > next.endDate ? absence.endDate : next.endDate,
@@ -500,7 +503,7 @@ export class AbsencesService {
     );
     const after = lockedDaysIn(lockedMonths, next.startDate, next.endDate);
     if (JSON.stringify(before) !== JSON.stringify(after)) {
-      throw lockedAbsenceError(
+      throw lockedMonthError(
         `Cannot change the absence to ${formatDay(next.startDate)} – ${formatDay(next.endDate)}: its days in a locked reporting period stay as they are.`,
       );
     }
@@ -514,7 +517,7 @@ export class AbsencesService {
         absence.minutes === null && next.minutes === null
           ? 'reason and note'
           : 'reason, hours and note';
-      throw lockedAbsenceError(
+      throw lockedMonthError(
         `Part of this absence is in a locked month, so its ${kept} stay as they are.`,
       );
     }
@@ -837,20 +840,6 @@ export class AbsencesService {
    * Serializes writes per person by locking the user row, the way time logs
    * do, so a concurrent time log and absence cannot both see a free day.
    */
-  private async lockUser(
-    manager: EntityManager,
-    userId: string,
-    companyId: string,
-  ): Promise<void> {
-    const user = await manager
-      .createQueryBuilder(User, 'u')
-      .setLock('pessimistic_write')
-      .where('u.id = :userId', { userId })
-      .andWhere('u.company_id = :companyId', { companyId })
-      .getOne();
-
-    if (!user) throw new NotFoundException('User not found');
-  }
 
   /**
    * Recording an absence for somebody follows the time-log write scope, so the
@@ -891,12 +880,6 @@ const summarisePlans = (plans: RemovedPlan[]): PlansRemovedDetails => {
       .sort((a, b) => a.name.localeCompare(b.name)),
   };
 };
-
-/** A refusal over a locked month, saying who can open it again. */
-const lockedAbsenceError = (reason: string) =>
-  new ForbiddenException(
-    `${reason} The owner can reopen the month in Periods.`,
-  );
 
 /** An absence's days in each locked month, as first and last day, oldest first. */
 const lockedDaysIn = (

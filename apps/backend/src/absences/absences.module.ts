@@ -3,7 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Absence } from './entities/absence.entity';
 import { AbsencesService } from './absences.service';
 import { AbsencesController } from './absences.controller';
-import { ReportingModule } from 'src/reporting/reporting.module';
+import { PeriodLocksModule } from 'src/reporting/period-locks.module';
 import { TeamsModule } from 'src/teams/teams.module';
 import { CapacityModule } from 'src/capacity/capacity.module';
 import { NotificationsModule } from 'src/notifications/notifications.module';
@@ -11,7 +11,7 @@ import { NotificationsModule } from 'src/notifications/notifications.module';
 @Module({
   imports: [
     TypeOrmModule.forFeature([Absence]),
-    ReportingModule,
+    PeriodLocksModule,
     TeamsModule,
     CapacityModule,
     NotificationsModule,

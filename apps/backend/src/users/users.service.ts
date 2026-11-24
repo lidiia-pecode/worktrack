@@ -37,7 +37,9 @@ import { pageOffset } from 'src/lib/dtos/pagination-query.dto';
 import { TimeLog } from 'src/time-logs/entities/time-log.entity';
 import { Absence } from 'src/absences/entities/absence.entity';
 import { PlanningEntry } from 'src/planning/entities/planning-entry.entity';
-import { ReportingService } from 'src/reporting/reporting.service';
+import { formatDay } from 'src/lib/utils/format-day.util';
+import { lockUser } from './lock-user.util';
+import { PeriodLocksService } from 'src/reporting/period-locks.service';
 import {
   addDays,
   isoDateIn,
@@ -79,7 +81,7 @@ export class UsersService {
     private readonly teamVisibility: TeamVisibilityService,
     private readonly dataSource: DataSource,
     private readonly capacity: CapacityService,
-    private readonly reporting: ReportingService,
+    private readonly periodLocks: PeriodLocksService,
   ) {}
 
   private getRepository(manager?: EntityManager): Repository<User> {
@@ -537,7 +539,7 @@ export class UsersService {
       const repo = this.getRepository(man);
       // Locked, so a role change and Change manager on the same person run
       // one after the other and neither writes back a stale role.
-      await this.lockUser(man, id, companyId);
+      await lockUser(man, id, companyId);
       const user = await this.getUserById(id, companyId, man);
 
       if (user.status === UserStatus.DEACTIVATED) {
@@ -662,7 +664,7 @@ export class UsersService {
       const repo = this.getRepository(man);
       // The person first, as every write for them locks, so time saved for
       // them at the same moment waits and is then refused or removed.
-      await this.lockUser(man, id, companyId);
+      await lockUser(man, id, companyId);
       const user = await this.getUserById(id, companyId, man);
 
       if (user.role === UserRole.OWNER) {
@@ -767,7 +769,7 @@ export class UsersService {
     const execute = async (man: EntityManager): Promise<User> => {
       const repo = this.getRepository(man);
       // So two reactivations at once can't both record the spell.
-      await this.lockUser(man, id, companyId);
+      await lockUser(man, id, companyId);
       const user = await this.getUserById(id, companyId, man);
 
       if (user.status === UserStatus.ACTIVE) {
@@ -799,17 +801,6 @@ export class UsersService {
     };
 
     return manager ? execute(manager) : this.dataSource.transaction(execute);
-  }
-
-  private async lockUser(
-    man: EntityManager,
-    id: string,
-    companyId: string,
-  ): Promise<void> {
-    await this.getRepository(man).findOne({
-      where: { id, companyId },
-      lock: { mode: 'pessimistic_write' },
-    });
   }
 
   /**
@@ -846,11 +837,11 @@ export class UsersService {
       );
     }
 
-    await this.assertAfterLockedMonths(
+    await this.periodLocks.assertAfterLockedMonths(
       man,
       user.companyId,
       addDays(lastWorkingDay, 1),
-      'The day after the last working day',
+      `The last working day can't be ${formatDay(lastWorkingDay)}`,
     );
   }
 
@@ -880,28 +871,12 @@ export class UsersService {
       );
     }
 
-    await this.assertAfterLockedMonths(
+    await this.periodLocks.assertAfterLockedMonths(
       man,
       user.companyId,
       firstDayBack,
-      'The first day back',
+      `The first day back can't be ${formatDay(firstDayBack)}`,
     );
-  }
-
-  /** The first day a change affects must be in an open month. */
-  private async assertAfterLockedMonths(
-    man: EntityManager,
-    companyId: string,
-    firstAffectedDay: string,
-    subject: string,
-  ): Promise<void> {
-    const lockedUntil = await this.reporting.latestLockedDate(companyId, man);
-
-    if (firstAffectedDay <= lockedUntil) {
-      throw new ForbiddenException(
-        `${subject} is in a locked month: periods are locked up to ${lockedUntil}.`,
-      );
-    }
   }
 
   /** Nothing stays recorded after the last working day. */

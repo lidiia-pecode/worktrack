@@ -29,6 +29,7 @@ import type { AuthUser } from 'src/auth/auth-strategies/types';
 import { LONG_STANDING_ACCOUNT_CREATED_AT } from 'src/lib/testing/accounts';
 
 import { ReportingPeriod } from '../entities/reporting-period.entity';
+import { PeriodLocksService } from '../period-locks.service';
 import { ReportingService } from '../reporting.service';
 import { HoursReportGroupBy } from '../enums/hours-report-group-by.enum';
 import {
@@ -102,10 +103,14 @@ describe('PeopleReportService', () => {
       dataSource.getRepository(TeamMembership),
       dataSource.getRepository(User),
     );
+    const periodLocks = new PeriodLocksService(
+      dataSource.getRepository(ReportingPeriod),
+    );
     reporting = new ReportingService(
       dataSource.getRepository(ReportingPeriod),
       dataSource.getRepository(Company),
       teamVisibility,
+      periodLocks,
     );
     const capacity = new CapacityService(
       dataSource.getRepository(UserCapacity),
@@ -113,7 +118,7 @@ describe('PeopleReportService', () => {
       dataSource.getRepository(User),
       dataSource.getRepository(UserInactivePeriod),
       dataSource.getRepository(CompanyStandardDay),
-      reporting,
+      periodLocks,
     );
     expectedHours = new ExpectedHoursService(
       dataSource.getRepository(Absence),

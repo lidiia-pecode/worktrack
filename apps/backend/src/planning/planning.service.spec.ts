@@ -23,7 +23,7 @@ import { ProjectStatus } from 'src/projects/enums/project-status.enum';
 import { ProjectsService } from 'src/projects/projects.service';
 import { ReportingPeriod } from 'src/reporting/entities/reporting-period.entity';
 import { ReportingPeriodStatus } from 'src/reporting/enums/reporting-period-status.enum';
-import { ReportingService } from 'src/reporting/reporting.service';
+import { PeriodLocksService } from 'src/reporting/period-locks.service';
 import {
   firstDayOfMonth,
   lastDayOfMonth,
@@ -216,10 +216,8 @@ describe('PlanningService', () => {
       dataSource.getRepository(User),
     );
 
-    const reporting = new ReportingService(
+    const periodLocks = new PeriodLocksService(
       dataSource.getRepository(ReportingPeriod),
-      dataSource.getRepository(Company),
-      teamVisibility,
     );
 
     const capacity = new CapacityService(
@@ -228,7 +226,7 @@ describe('PlanningService', () => {
       dataSource.getRepository(User),
       dataSource.getRepository(UserInactivePeriod),
       dataSource.getRepository(CompanyStandardDay),
-      reporting,
+      periodLocks,
     );
     expectedHours = new ExpectedHoursService(
       dataSource.getRepository(Absence),
@@ -239,7 +237,7 @@ describe('PlanningService', () => {
       dataSource.getRepository(PlanningEntry),
       dataSource.getRepository(Project),
       teamVisibility,
-      reporting,
+      periodLocks,
       expectedHours,
       capacity,
       dataSource,
@@ -258,7 +256,7 @@ describe('PlanningService', () => {
         teamVisibility,
         dataSource,
         stub<CapacityService>({}),
-        stub<ReportingService>({}),
+        stub<PeriodLocksService>({}),
       ),
       teamVisibility,
       service,
@@ -873,10 +871,10 @@ describe('PlanningService', () => {
       ]);
 
       await expect(service.planPeriod(lockedWeek, manager)).rejects.toThrow(
-        /locked reporting period/,
+        /is locked, so it can't be planned/,
       );
       await expect(service.previewPeriod(lockedWeek, manager)).rejects.toThrow(
-        /locked reporting period/,
+        /is locked, so it can't be planned/,
       );
       expect(await entriesFor(member.id)).toHaveLength(0);
     });
@@ -958,7 +956,7 @@ describe('PlanningService', () => {
           range(LOCKED_MONDAY, addDays(LOCKED_MONDAY, 4)),
           manager,
         ),
-      ).rejects.toThrow(/locked reporting period/);
+      ).rejects.toThrow(/is locked, so it can't be planned/);
       expect(await entriesFor(member.id)).toHaveLength(1);
     });
 
@@ -1051,10 +1049,9 @@ describe('PlanningService', () => {
     });
 
     it('lets a manager who leads no team read their own plan', async () => {
-      const id = await existingEntry(loneManager.id, MONDAY, HOUR);
+      await existingEntry(loneManager.id, MONDAY, HOUR);
 
       expect((await listFor(loneManager.id, loneManager)).count).toBe(1);
-      expect((await service.getById(id, loneManager)).id).toBe(id);
       await expect(listFor(member.id, loneManager)).rejects.toThrow(
         ForbiddenException,
       );
@@ -1377,7 +1374,7 @@ describe('PlanningService', () => {
 
       await expect(
         planDay(member.id, DATE_IN_MONTH, HOUR, manager),
-      ).rejects.toThrow(/locked reporting period/);
+      ).rejects.toThrow(/is locked, so it can't be planned/);
     });
   });
   describe('a move between teams', () => {

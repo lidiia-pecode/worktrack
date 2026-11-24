@@ -18,7 +18,7 @@ import { TeamsService } from 'src/teams/teams.service';
 import { CapacityService } from 'src/capacity/capacity.service';
 import { UserCapacity } from 'src/capacity/entities/user-capacity.entity';
 import { CompanyStandardDay } from 'src/capacity/entities/company-standard-day.entity';
-import { ReportingService } from 'src/reporting/reporting.service';
+import { PeriodLocksService } from 'src/reporting/period-locks.service';
 import { ReportingPeriod } from 'src/reporting/entities/reporting-period.entity';
 import { Project } from 'src/projects/entities/project.entity';
 import { ProjectStatus } from 'src/projects/enums/project-status.enum';
@@ -58,7 +58,7 @@ describe('UsersService scope', () => {
   let dataSource: DataSource;
   let service: UsersService;
   let capacity: CapacityService;
-  let reporting: ReportingService;
+  let periodLocks: PeriodLocksService;
 
   let companyId: string;
   let owner: AuthUser;
@@ -100,10 +100,8 @@ describe('UsersService scope', () => {
       dataSource.getRepository(TeamMembership),
       dataSource.getRepository(User),
     );
-    reporting = new ReportingService(
+    periodLocks = new PeriodLocksService(
       dataSource.getRepository(ReportingPeriod),
-      dataSource.getRepository(Company),
-      teamVisibility,
     );
     capacity = new CapacityService(
       dataSource.getRepository(UserCapacity),
@@ -111,14 +109,14 @@ describe('UsersService scope', () => {
       dataSource.getRepository(User),
       dataSource.getRepository(UserInactivePeriod),
       dataSource.getRepository(CompanyStandardDay),
-      reporting,
+      periodLocks,
     );
     service = new UsersService(
       dataSource.getRepository(User),
       teamVisibility,
       dataSource,
       capacity,
-      reporting,
+      periodLocks,
     );
 
     const company = await dataSource
@@ -446,6 +444,7 @@ describe('UsersService scope', () => {
         dataSource.getRepository(Team),
         teamVisibility,
         dataSource,
+        periodLocks,
       );
 
       leaver = await createUser('leaver', UserRole.EMPLOYEE);
@@ -825,7 +824,7 @@ describe('UsersService scope', () => {
 
     it('takes the last day of a locked month, since only the days after it change', async () => {
       const leaver = await createLongServing('lockedmonth');
-      const lockedUntil = await reporting.latestLockedDate(companyId);
+      const lockedUntil = await periodLocks.latestLockedDate(companyId);
 
       await expect(
         service.archive(
