@@ -234,10 +234,19 @@ export const AbsenceFormModal = ({
     startDate,
     picksDays ? isUnavailable : () => false,
   );
+  // A new range that nobody has touched is about to move off a day it can't
+  // take (the effect below), so that day isn't reported for the render
+  // before it moves.
+  const isAboutToMove =
+    !absence &&
+    !opensOnDay &&
+    !isDirty &&
+    isUnavailable(startDate) &&
+    !!firstFreeWorkingDay(startDate, daysWindow.to, isUnavailable);
   // The pickers keep such a day out of reach, but days chosen while they
   // were still loading may hold one, which the server would refuse.
   const blockedDay =
-    picksDays && areDaysKnown
+    picksDays && areDaysKnown && !isAboutToMove
       ? firstUnavailableIn(
           changeableDays(startDate, endDate, lockedPart),
           isUnavailable,

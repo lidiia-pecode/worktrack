@@ -847,11 +847,6 @@ export class AbsencesService {
   }
 
   /**
-   * Serializes writes per person by locking the user row, the way time logs
-   * do, so a concurrent time log and absence cannot both see a free day.
-   */
-
-  /**
    * Recording an absence for somebody follows the time-log write scope, so the
    * two can never disagree about who may speak for whom: every day of it has
    * to be within the caller's reach.

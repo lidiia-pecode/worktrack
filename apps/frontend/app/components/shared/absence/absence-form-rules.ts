@@ -13,7 +13,7 @@ import { AbsenceLockedPart } from "@/lib/utils/reporting-period";
 type IsUnavailable = (date: string) => boolean;
 
 /** First and last day, both counted. */
-export type DaySpan = { from: string; to: string };
+type DaySpan = { from: string; to: string };
 
 export const UNAVAILABLE_DAYS_HINT =
   "Days with time logged, another absence or in a locked month can't be chosen.";

@@ -131,13 +131,15 @@ describe('ReportingService', () => {
 
   describe('automatic locking', () => {
     it('leaves the current month open', async () => {
-      await expect(locks.isDateLocked(companyId, today)).resolves.toBe(false);
+      await expect(locks.isRangeLocked(companyId, today, today)).resolves.toBe(
+        false,
+      );
     });
 
     it('locks a month once its grace window has passed', async () => {
-      await expect(locks.isDateLocked(companyId, lockedDate)).resolves.toBe(
-        true,
-      );
+      await expect(
+        locks.isRangeLocked(companyId, lockedDate, lockedDate),
+      ).resolves.toBe(true);
     });
 
     it('locks a range as soon as it touches a locked month', async () => {
@@ -185,7 +187,7 @@ describe('ReportingService', () => {
             "A change can't start then",
           ),
         ).rejects.toThrow(
-          /^A change can't start then: months up to .+ are locked\. The owner can reopen a month in Periods\.$/,
+          /^A change can't start then: months up to .+ are locked\. The owner can reopen them in Periods\.$/,
         );
         await expect(
           locks.assertAfterLockedMonths(
@@ -202,14 +204,14 @@ describe('ReportingService', () => {
   describe('reopening', () => {
     it('makes a locked month writable until it is closed again', async () => {
       await service.reopenMonth(companyId, lockedMonthKey, ownerId);
-      await expect(locks.isDateLocked(companyId, lockedDate)).resolves.toBe(
-        false,
-      );
+      await expect(
+        locks.isRangeLocked(companyId, lockedDate, lockedDate),
+      ).resolves.toBe(false);
 
       await service.closeMonth(companyId, lockedMonthKey, ownerId);
-      await expect(locks.isDateLocked(companyId, lockedDate)).resolves.toBe(
-        true,
-      );
+      await expect(
+        locks.isRangeLocked(companyId, lockedDate, lockedDate),
+      ).resolves.toBe(true);
     });
 
     it('can reopen a month that was closed again', async () => {
@@ -217,9 +219,9 @@ describe('ReportingService', () => {
       await service.closeMonth(companyId, lockedMonthKey, ownerId);
       await service.reopenMonth(companyId, lockedMonthKey, ownerId);
 
-      await expect(locks.isDateLocked(companyId, lockedDate)).resolves.toBe(
-        false,
-      );
+      await expect(
+        locks.isRangeLocked(companyId, lockedDate, lockedDate),
+      ).resolves.toBe(false);
     });
 
     it('skips a reopened month when finding the newest locked one', async () => {
@@ -284,9 +286,9 @@ describe('ReportingService', () => {
         ]),
       ).rejects.toThrow(ConflictException);
 
-      await expect(locks.isDateLocked(companyId, lockedDate)).resolves.toBe(
-        false,
-      );
+      await expect(
+        locks.isRangeLocked(companyId, lockedDate, lockedDate),
+      ).resolves.toBe(false);
     });
 
     it('waits for a write that passed the lock check before closing', async () => {
@@ -298,7 +300,7 @@ describe('ReportingService', () => {
       await dataSource.transaction(async (manager) => {
         // The write's lock check, which share-locks the reopened month's row.
         await expect(
-          locks.isDateLocked(companyId, lockedDate, manager),
+          locks.isRangeLocked(companyId, lockedDate, lockedDate, manager),
         ).resolves.toBe(false);
 
         closing = service
@@ -420,18 +422,18 @@ describe('ReportingService', () => {
       freezeAtLastGraceSecond(MONTH, TIME_ZONE);
 
       await expect(stateOfMonth()).resolves.toBe(ReportingMonthState.GRACE);
-      await expect(locks.isDateLocked(companyId, '2026-01-31')).resolves.toBe(
-        false,
-      );
+      await expect(
+        locks.isRangeLocked(companyId, '2026-01-31', '2026-01-31'),
+      ).resolves.toBe(false);
     });
 
     it('locks it from that midnight', async () => {
       freezeAtFirstLockedSecond(MONTH, TIME_ZONE);
 
       await expect(stateOfMonth()).resolves.toBe(ReportingMonthState.LOCKED);
-      await expect(locks.isDateLocked(companyId, '2026-01-31')).resolves.toBe(
-        true,
-      );
+      await expect(
+        locks.isRangeLocked(companyId, '2026-01-31', '2026-01-31'),
+      ).resolves.toBe(true);
     });
   });
 

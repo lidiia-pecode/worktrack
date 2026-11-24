@@ -8,7 +8,7 @@ export const addedLineMinutes = ({
 }: {
   hours: number;
   minutes: number;
-}) => Number(hours) * 60 + Number(minutes);
+}) => hours * 60 + minutes;
 
 /** A plan to add, as the lines under the planned rows hold it. */
 export const addedLineSchema = z

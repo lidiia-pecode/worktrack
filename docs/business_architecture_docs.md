@@ -670,7 +670,7 @@ An OWNER can **reopen** a locked month, and it stays open until they close it
 again; a month still inside its grace window cannot be reopened or closed. Each
 reopened month is one `ReportingPeriod` row — `OPEN` while reopened, `LOCKED`
 once closed again, with who changed it last. No row means the automatic rule.
-`isDateLocked` backs the check in rule 1 above.
+`PeriodLocksService` backs the check in rule 1 above.
 
 **Planning follows locked periods like time logs**, so a plan stays
 correctable until its period is locked, and Reports' planned and logged hours

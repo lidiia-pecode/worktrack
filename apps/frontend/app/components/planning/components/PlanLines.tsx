@@ -115,8 +115,8 @@ export const PlanLines = ({
 
               <TimePicker
                 aria-label={`Hours a day for project ${index + 1}`}
-                hours={Number(line.hours)}
-                minutes={Number(line.minutes)}
+                hours={line.hours}
+                minutes={line.minutes}
                 minuteStep={PLAN_MINUTE_STEP}
                 maxMinutes={maxMinutes}
                 formId={formId}

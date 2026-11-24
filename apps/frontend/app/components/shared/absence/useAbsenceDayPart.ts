@@ -7,7 +7,7 @@ import { formatDuration } from "@/lib/utils/date";
 import { partDayError } from "./absence-form-rules";
 
 /** How much of one day: all of it, what logging left, or hours set. */
-export type AbsenceLength = "whole" | "rest" | "hours";
+type AbsenceLength = "whole" | "rest" | "hours";
 
 /**
  * What a form about one day offers and holds: the lengths the day can take,

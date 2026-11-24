@@ -729,11 +729,6 @@ export class TimeLogsService {
   }
 
   /**
-   * Serializes writes per user by locking the user row, so concurrent
-   * create/update operations cannot race the daily-total computation.
-   */
-
-  /**
    * A day is either worked or absent, never both; a day partly absent still
    * takes time, past the absence too. Absences are read straight from their
    * table so the two services do not have to depend on each other.

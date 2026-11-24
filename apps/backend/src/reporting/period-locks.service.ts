@@ -36,14 +36,6 @@ export class PeriodLocksService {
     private readonly periodRepo: Repository<ReportingPeriod>,
   ) {}
 
-  async isDateLocked(
-    companyId: string,
-    date: string,
-    manager?: EntityManager,
-  ): Promise<boolean> {
-    return this.isRangeLocked(companyId, date, date, manager);
-  }
-
   /** True when any day between the two dates is locked. */
   async isRangeLocked(
     companyId: string,
@@ -180,7 +172,7 @@ export class PeriodLocksService {
     if (firstAffectedDay <= lockedUntil) {
       throw lockedMonthError(
         `${refusal}: months up to ${formatMonth(lockedUntil)} are locked.`,
-        'a month',
+        'them',
       );
     }
   }
@@ -189,6 +181,6 @@ export class PeriodLocksService {
 /** A refusal over a locked month, saying who can open it again. */
 export const lockedMonthError = (
   reason: string,
-  month: 'the month' | 'a month' = 'the month',
+  month: 'the month' | 'them' = 'the month',
 ) =>
   new ForbiddenException(`${reason} The owner can reopen ${month} in Periods.`);

@@ -384,8 +384,8 @@ export const TimeLogFormModal = ({
             className="flex flex-col items-end gap-1"
           >
             <TimePicker
-              hours={Number(hours)}
-              minutes={Number(minutes)}
+              hours={hours}
+              minutes={minutes}
               onHoursChange={(value) => setDuration("hours", value)}
               onMinutesChange={(value) => setDuration("minutes", value)}
               formId={FORM_ID}
