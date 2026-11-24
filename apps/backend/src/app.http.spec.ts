@@ -80,6 +80,7 @@ describe('the app over HTTP', () => {
   let ownerEmail: string;
   let employeeCookie: string;
 
+  /** `body` is sent as JSON; a string is sent as the JSON text it already is. */
   const call = (
     route: string,
     { cookie, body }: { cookie?: string; body?: unknown } = {},
@@ -93,7 +94,12 @@ describe('the app over HTTP', () => {
         ...(cookie ? { cookie } : {}),
         ...(body ? { 'content-type': 'application/json' } : {}),
       },
-      body: body ? JSON.stringify(body) : undefined,
+      body:
+        typeof body === 'string'
+          ? body
+          : body
+            ? JSON.stringify(body)
+            : undefined,
     });
   };
 
@@ -308,11 +314,10 @@ describe('the app over HTTP', () => {
   });
 
   describe('input no screen sends', () => {
-    const nested = (depth: number): unknown =>
-      Array.from({ length: depth }).reduce<unknown>(
-        (inner) => ({ note: inner }),
-        'deep',
-      );
+    // Written as text: building the object and serialising it would overflow
+    // the test's own stack before the request is sent.
+    const nested = (depth: number) =>
+      `${'{"note":'.repeat(depth)}"deep"${'}'.repeat(depth)}`;
 
     it.each([
       ['a null character in a search', 'GET /users?search=a%00b', undefined],
