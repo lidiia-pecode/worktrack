@@ -9,7 +9,7 @@ import { useUnsavedChangesGuard } from "@/hooks/useUnsavedChangesGuard";
 import { DiscardChangesModal } from "@/app/components/shared/DiscardChangesModal";
 
 import { SettingsSidebar } from "./SettingsSidebar";
-import { ProfileSettings } from "./profile/ProfileSettings";
+import { ProfileSettings, type Profile } from "./profile/ProfileSettings";
 import {
   SecuritySettings,
   type SignInMethods,
@@ -19,11 +19,19 @@ import { resolveSettingsTab, type SettingsTab } from "./settings-tabs";
 
 type SettingsViewProps = {
   isOwner: boolean;
-  /** How the person signs in, as the server knows it before the page loads. */
+  /**
+   * The person and how they sign in, as the server knows them before the page
+   * loads.
+   */
+  profile: Profile;
   signIn: SignInMethods;
 };
 
-export const SettingsView = ({ isOwner, signIn }: SettingsViewProps) => {
+export const SettingsView = ({
+  isOwner,
+  profile,
+  signIn,
+}: SettingsViewProps) => {
   const { user } = useAuth();
 
   const searchParams = useSearchParams();
@@ -70,7 +78,10 @@ export const SettingsView = ({ isOwner, signIn }: SettingsViewProps) => {
 
         <div className="min-w-0 max-w-180 flex-1">
           {activeTab === "profile" && (
-            <ProfileSettings user={user} onDirtyChange={setHasUnsavedChanges} />
+            <ProfileSettings
+              profile={user ?? profile}
+              onDirtyChange={setHasUnsavedChanges}
+            />
           )}
 
           {activeTab === "security" && (

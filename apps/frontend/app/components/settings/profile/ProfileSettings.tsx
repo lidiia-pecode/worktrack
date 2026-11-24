@@ -16,15 +16,18 @@ import Input from "../../../../components/ui/input";
 import { useProfile } from "@/hooks/auth/useProfile";
 import { useReportDirty } from "@/hooks/useReportDirty";
 
+export type Profile = Pick<User, "firstName" | "lastName" | "email">;
+
 interface ProfileSettingsProps {
-  user: User | null;
+  profile: Profile;
   onDirtyChange?: (isDirty: boolean) => void;
 }
 
 export const ProfileSettings = ({
-  user,
+  profile,
   onDirtyChange,
 }: ProfileSettingsProps) => {
+  const { firstName, lastName, email } = profile;
   const { actions } = useProfile();
 
   const {
@@ -34,22 +37,15 @@ export const ProfileSettings = ({
     formState: { isDirty, errors },
   } = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
-    defaultValues: {
-      firstName: "",
-      lastName: "",
-    },
+    defaultValues: { firstName, lastName },
   });
 
   useReportDirty(isDirty, onDirtyChange);
 
+  // A saved name becomes the form's starting point.
   useEffect(() => {
-    if (!user) return;
-
-    reset({
-      firstName: user.firstName ?? "",
-      lastName: user.lastName ?? "",
-    });
-  }, [user, reset]);
+    reset({ firstName, lastName });
+  }, [firstName, lastName, reset]);
 
   const onSubmit = (data: ProfileFormValues) => {
     actions.update.mutate({
@@ -70,18 +66,20 @@ export const ProfileSettings = ({
           <div className="grid gap-6 sm:grid-cols-2">
             <Input
               label="First name"
+              defaultValue={firstName}
               {...register("firstName")}
               error={errors.firstName?.message}
             />
 
             <Input
               label="Last name"
+              defaultValue={lastName}
               {...register("lastName")}
               error={errors.lastName?.message}
             />
           </div>
 
-          <Input label="Email" value={user?.email ?? ""} disabled />
+          <Input label="Email" value={email} disabled />
         </CardBody>
 
         <CardFooter>

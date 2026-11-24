@@ -22,6 +22,11 @@ export default async function SettingsPage() {
 
       <SettingsView
         isOwner={user.role === UserRole.OWNER}
+        profile={{
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email,
+        }}
         signIn={{
           email: user.email,
           hasPassword: user.hasPassword,
