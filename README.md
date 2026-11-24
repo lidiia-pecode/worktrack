@@ -185,6 +185,7 @@ CI runs, and the rules for changes that touch the database.
 | [`docs/business_architecture_docs.md`](docs/business_architecture_docs.md)         | Product definition, business rules and decisions       |
 | [`docs/permission-model.md`](docs/permission-model.md)                             | Who may do what, and why                               |
 | [`docs/workflow.md`](docs/workflow.md)                                             | Branching, pull requests, CI, database changes         |
+| [`docs/known-issues.md`](docs/known-issues.md)                                     | What is wrong, unfinished or left out on purpose       |
 
 The backend serves Swagger at <http://localhost:3001/api/docs> when running.
 It is off in production unless `ENABLE_SWAGGER=true` is set.
