@@ -16,7 +16,7 @@ export interface PlanningEntry {
   updatedAt: string;
 }
 
-// Payload (back PlanPeriodPayload)
+/** Mirrors the backend `PlanPeriodPayload`. */
 export interface PlanPeriodPayload {
   userId: string;
   startDate: string;
@@ -29,7 +29,7 @@ export interface PlanPeriodPayload {
   }[];
 }
 
-// Query (back DeletePeriodPlansQuery)
+/** Mirrors the backend `DeletePeriodPlansQuery`. */
 export interface DeletePeriodPlansQuery {
   userId: string;
   projectId: string;
@@ -55,7 +55,7 @@ export interface PeriodProblem {
   otherProjectsMinutes: number;
 }
 
-// Response (back PeriodPreview): the same plan checked, not saved
+/** Mirrors the backend `PeriodPreview`: the same plan checked, not saved. */
 export interface PeriodPreview {
   /** The working days the plan would cover. */
   plannedDays: string[];
@@ -71,7 +71,7 @@ export interface PeriodPreview {
   partDays: { date: string; absenceMinutes: number }[];
 }
 
-// Query (back PlanningQueryDto)
+/** Mirrors the backend `PlanningQueryDto`. */
 export type PlanningQuery = PaginationParams & {
   userId?: string;
   projectId?: string;

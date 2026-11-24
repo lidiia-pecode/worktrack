@@ -1,5 +1,3 @@
-// src/auth/entities/google-signup-token.entity.ts
-
 import {
   Column,
   CreateDateColumn,

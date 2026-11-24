@@ -51,7 +51,6 @@ export interface TeamArchiveImpact {
   pendingInvitationCount: number;
 }
 
-// Payloads
 export interface CreateTeamPayload {
   name: string;
 }

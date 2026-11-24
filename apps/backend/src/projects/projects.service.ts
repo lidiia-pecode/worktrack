@@ -421,10 +421,6 @@ export class ProjectsService {
     if (!assignable.has(userId)) throw new ForbiddenException(message);
   }
 
-  // ---------------------------------------------------------------------------
-  // PUBLIC METHODS
-  // ---------------------------------------------------------------------------
-
   async list(query: ProjectsQuery, user: AuthUser) {
     // Members are counted, not loaded — the roster itself is only returned by
     // `getById` and `listUsers`.

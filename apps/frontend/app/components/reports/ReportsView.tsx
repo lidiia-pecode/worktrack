@@ -171,8 +171,8 @@ export const ReportsView = () => {
       );
     }
 
-    // A locked month is for reference only, so nothing is marked (Decision 34);
-    // Needs attention reads one month at a time.
+    // A locked month is for reference only, so nothing is marked; Needs
+    // attention reads one month at a time.
     const showsAttention = isProvisional && isMonth;
     const attention = showsAttention
       ? reportAttention({

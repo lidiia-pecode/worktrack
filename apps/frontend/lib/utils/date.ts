@@ -126,8 +126,8 @@ export function isToday(date: Date, timeZone?: string): boolean {
  * Saturday and Sunday. This is a calendar fact and stays fixed regardless of
  * which day the grid starts on.
  *
- * TODO: Company has no "working days" setting, so a company with a different
- * working week cannot be represented yet.
+ * A company has no "working days" setting, so a different working week
+ * cannot be represented.
  */
 export function isWeekend(date: Date): boolean {
   const day = date.getDay();

@@ -1,5 +1,3 @@
-// apps/backend/src/invitations/invitations.service.ts
-
 import {
   BadRequestException,
   ConflictException,

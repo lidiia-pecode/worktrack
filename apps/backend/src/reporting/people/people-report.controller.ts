@@ -30,7 +30,7 @@ export class PeopleReportController {
     return this.peopleReportService.getPeopleReport(user, query);
   }
 
-  /** Reports' opening figures; the timeline in it stays closed to employees (Q11). */
+  /** Reports' opening figures; the timeline in it stays closed to employees. */
   @Get('overview')
   @Role(UserRole.OWNER, UserRole.MANAGER)
   getOverview(@CurrentUser() user: AuthUser, @Query() query: ReportRangeQuery) {

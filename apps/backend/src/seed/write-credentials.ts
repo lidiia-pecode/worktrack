@@ -86,11 +86,11 @@ up to ${PLANS_UNTIL}. What each person logs and plans, and the story it tells,
 is \`REPORT_HISTORY\` in the seed config. Sign in as the owner for the whole
 company, or as a manager for their team.
 
-> This file contains a password, so it is not committed: the repository ignores
-> \`*.md\` by default. Re-run \`make seed\` to recreate it.
+> This file contains a password, so it is not committed: \`.gitignore\` lists
+> it. Re-run \`make seed\` to recreate it.
 `;
 
-  // Everything in docs/ is gitignored, so a fresh clone has no such folder.
+  // A fresh clone may have no such folder.
   fs.mkdirSync(path.dirname(TARGET), { recursive: true });
   fs.writeFileSync(TARGET, content, 'utf8');
 

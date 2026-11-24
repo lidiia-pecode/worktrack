@@ -9,8 +9,7 @@ who may do what and why, and [`workflow.md`](./workflow.md) for how a change
 reaches `main`. This document explains the product those pieces serve.
 
 **Status of this document.** Sections 1–6 describe behaviour verified against
-the current code and are authoritative; §7 describes what the finished product
-is for, and §8 the constraints every change keeps.
+the current code; §7 lists the constraints every change keeps.
 
 ---
 
@@ -26,6 +25,23 @@ logged, where time is going, and how actual effort compares to what was planned.
 The company doing the work is a **services company**: most work is done for
 external clients on client projects, alongside internal activities such as
 education, bench time and internal projects.
+
+### Who uses it, and for what
+
+- **Every employee** logs their week quickly against the projects they are on,
+  marking client work billable or not, and can see at a glance whether their week
+  is accounted for — with absences explaining any gaps rather than reading as
+  missing time.
+- **Every manager** opens one screen and sees their team's week: who logged, who
+  is short, where the time went. They can plan upcoming work for their people
+  without that plan constraining anyone.
+- **The owner** sees the same across the company, closes periods once hours have
+  been used for invoicing, and can export hours — split by client, project, and
+  billable/non-billable — to hand to whoever produces the invoices. A manager
+  can export the same for the teams they lead.
+- **Nobody** approves anybody's timesheet. Someone else's time can be corrected
+  by their manager or by the owner, inside an open period, and never by anyone
+  else (D9).
 
 ### What WorkTrack is not
 
@@ -152,14 +168,10 @@ holidays are never logged as time.
 project totals, billable ratio — and forces absences to be attached to a fake
 project in order to exist at all.
 
-*Consequence, and this reverses an existing design.* Absence needs its own
-representation, separate from `TimeLog`, supporting **date ranges** so a
-two-week holiday is recorded once rather than fourteen times. It exists so that
-a person and a future report can see *why* no time was logged.
-
-`Absence` is its own table with a date range, a fixed type
-and an owner; an `Activity.isAbsence` flag that contradicted this decision was
-removed with it. The rules are in §4.
+*Consequence.* `Absence` is its own table, separate from `TimeLog`, with a
+date range so a two-week holiday is recorded once rather than fourteen times,
+a fixed type and an owner. It exists so that a person and a report can see
+*why* no time was logged. The rules are in §4.
 
 ### D7 — No money in WorkTrack
 
@@ -187,7 +199,8 @@ values, and admin CRUD — for reporting nobody has asked for yet.
 typed identically every time; a typo silently splits one client in two. If
 reliable client-level reporting becomes a requirement — most likely if WorkTrack
 is ever extended to other businesses — promoting clients to an entity is the
-correct move at that point, not before.
+correct move at that point, not before. A project's client is also read as it
+is now: renaming it changes the client shown on past time too.
 
 ### D9 — Time-log write access follows read visibility
 
@@ -277,8 +290,9 @@ Company  (tenant root — everything below carries companyId)
 ├── Invitation      email + role + status (PENDING | ACCEPTED | REVOKED)
 │                   teamId (the team it is for) + invitedById (who sent it)
 │
-├── Notification    recipient + type + subjectUser + readAt
-│                   type: INVITATION_ACCEPTED
+├── Notification    recipient + type + subjectUser + readAt + details
+│                   type: INVITATION_ACCEPTED | PLANS_REMOVED_BY_ABSENCE
+│                   details: what an absence removed from someone's plans
 │
 ├── ActCategory ──< Activity          defaultBillable
 │
@@ -326,19 +340,15 @@ different email addresses. There is no shared identity spanning companies —
 consistent with §1's position on multi-company.
 
 **A person is in one team at a time, and a team has at most one manager.**
-The database holds both rules. Leading a team is that team's membership
-(`roleInTeam = MANAGER`), so a manager's own hours count there; a Manager who
-leads no team may be a plain member of another. Adding someone from another
-team is a move: the old membership ends the day the new one starts, in one
-transaction, after the owner confirms it. Someone who leads their team is moved
-only once it has another manager. A team may have no manager, and the owner
-then covers it. Leading a team is what grants reach; being a member only
-decides who oversees your own time.
+The database holds both rules, and leading a team is that team's membership
+(`roleInTeam = MANAGER`). Adding someone from another team is a move: the old
+membership ends the day the new one starts, in one transaction, after the owner
+confirms it. What follows from the two rules, and why, is in
+[`permission-model.md`](./permission-model.md) §3.3.
 
-**Change manager is the one way a team gets its manager.** The owner picks,
-from today, one of the team's members (an Employee is made a Manager in the
-same change) or a Manager in no team, never someone in another team, so nobody
-moves and no other team changes. The current manager stays in the team as a
+**Change manager is the one way a team gets its manager**, from today: the
+owner picks one of its members or a Manager in no team
+(`permission-model.md` §3.2–§3.3). The current manager stays in the team as a
 member or leaves it; a deactivated one is replaced the same way. Moving a
 manager to another team is three plain steps: Change manager on the old team,
 keeping them as a member; Change team; Change manager on the new team.
@@ -389,7 +399,9 @@ Every write passes five checks, in this order (`time-logs.service.ts`):
 4. **Employed on that day** — a day after the person's last working day, or
    inside an earlier spell between a last working day and the first day back,
    is rejected (400, saying why), on create and when an entry moves to a new
-   date (`assertEmployedOn`). The last working day itself stays open.
+   date (`assertEmployedOn`). The last working day itself stays open, and so
+   does a day before the person's account was created, for time and for
+   absences; only Planning closes those days.
 5. **Project activity and membership** — the `ProjectActivity` must belong to
    the caller's company (404); the owner must be on its project, a
    `project_users` row for `(projectId, userId)` (400), so a valid
@@ -496,7 +508,7 @@ person, or someone answerable for them, says this work happened".
 ### Planning
 
 A `PlanningEntry` is company + target user + **project** + date + planned
-minutes, recording who created it. Unique on
+minutes, recording who created it and who changed it last. Unique on
 `(companyId, userId, projectId, date)` — one row is one person, one project, one
 day, so one day can hold several projects. Writes take the same pessimistic
 user-row lock as time logs.
@@ -520,7 +532,7 @@ Every write is checked on the server:
    or week left over by a later absence or a lowered capacity is kept (a week
    over is flagged "Over by", below) and can always be reduced.
 6. Nothing can be planned on a day the person wasn't employed, as for time
-   entries (rule 4 there).
+   entries (check 4 there).
 
 Plans are written in one way only, a period save, a single day being a period
 of one day, and removed per project across a period, never one by one. A day a
@@ -530,10 +542,12 @@ period plans only what is left, filling its projects in order, the last ones
 giving way — one left no room loses the plan it had there — and its preview
 names the day. Recording a whole-day absence, or
 widening or moving one, deletes that person's plans on its days, whoever records it — the
-person themselves included, though they cannot write planning otherwise.
+person themselves included, though they cannot write planning otherwise. The
+absence form waits until it knows which plans it removes, and says so.
 Plans on its days in a locked month stay, as those days do, and deleting or
-shortening an absence brings nothing back. Whoever made the removed plans is
-told in-app, unless they recorded the absence: only about the plans on days
+shortening an absence brings nothing back. Whoever changed each removed plan
+last, or made it when nobody did, is told in-app, unless they recorded the
+absence: only about the plans on days
 they can still read for that person, only while they are active, and never
 naming the absence's type, so a notice reaches no further than they could
 see.
@@ -591,7 +605,7 @@ and this document:
 | **Expected** | How much somebody was supposed to work | capacity from the day their account was created up to and including their last working day, minus the days they were away |
 | **Planned** | What a manager committed them to, by project | the planning entries for those days |
 | **Logged** | What actually happened | the time logs for those days |
-| **Behind** | They logged less than expected | logged < expected, over finished days only; Reports' People card shows it as each person's logged time against expected, and nothing else marks it |
+| **Behind** | They logged less than expected | logged < expected, over finished days only. No screen labels a person behind: Reports' People table shows each person's logged time against expected, and that is all |
 
 **Capacity** is a `UserCapacity` row: contracted minutes per week with the date
 it takes effect, unique on `(companyId, userId, validFrom)`. An owner sets it
@@ -636,7 +650,7 @@ the day after their last working day to the day before their first day back
 what keeps a full week away at exactly zero and a full week present at exactly
 that person's capacity, for a part-timer as well as a full-timer. It returns
 `total` for the whole range, `toDate` counting only days that have finished in
-the company's timezone, which Reports' People card measures against, and a
+the company's timezone, which Reports' People table measures against, and a
 figure for every date, which the timesheet draws each day's line and over-target
 warning from. A day expects nothing on a weekend, a whole-day absence or before the
 account was created. The days are rounded along a running total, so they always
@@ -670,7 +684,7 @@ An OWNER can **reopen** a locked month, and it stays open until they close it
 again; a month still inside its grace window cannot be reopened or closed. Each
 reopened month is one `ReportingPeriod` row — `OPEN` while reopened, `LOCKED`
 once closed again, with who changed it last. No row means the automatic rule.
-`PeriodLocksService` backs the check in rule 1 above.
+`PeriodLocksService` backs check 2 of Time logging.
 
 **Planning follows locked periods like time logs**, so a plan stays
 correctable until its period is locked, and Reports' planned and logged hours
@@ -818,8 +832,8 @@ from the day after the last working day to the day before they come back (§4,
 capacity). Deactivating someone also ends their sessions at once, so after
 Reactivate they sign in again. A user cannot deactivate themselves, an OWNER account
 cannot be deactivated, nobody changes their own role, and nobody can be made
-an OWNER, so a company has exactly one owner (handing ownership over is not
-built yet). A deactivated person keeps their teams and projects but cannot be
+an OWNER, so a company has exactly one owner, and ownership cannot be handed
+over. A deactivated person keeps their teams and projects but cannot be
 added to a team or a project, and their details and working hours change only
 once they are reactivated. Reactivate asks first and names the teams and
 active projects they come back to; someone whose last working day is today
@@ -836,13 +850,13 @@ the team and project panels say "Last day" and the date after their position.
 | Area | OWNER | MANAGER | EMPLOYEE |
 | :--- | :--- | :--- | :--- |
 | Company settings | read + update | read | read |
-| Users — roster | full CRUD | list + read, within their teams | own profile only |
+| Users — roster | list, read and edit anyone, change a role, deactivate and reactivate; nobody is created directly (see Invitations) or deleted | list + read, within their teams | own profile only |
 | Users — assignment list | whole company | the people in teams they lead, plus themselves | — |
 | Invitations | create, any role, an employee always into a team, a manager optionally to lead a team that has no manager or pending manager invitation; list, resend and revoke any pending one | create, EMPLOYEE only, always into a team they lead; list, resend and revoke the employee ones into teams they lead | — |
 | Notifications | own only: read, mark read | own only: read, mark read | own only: read, mark read |
-| Teams | full CRUD, including a member's move, addition or removal dated back to an open day, and each team's one manager through Change manager; the Teams page is theirs alone | read, within their teams (filters and team links); remove a member (not a team manager) from the person's panel, from today | — |
-| Projects | full CRUD; archive and restore are theirs alone | create, edit, staff their own people, choose activities from the catalogue | only their own, through `GET /projects/me` and `GET /projects/me/activities`, with the client name; the client name also on their own time entries |
-| Activities, Categories | full CRUD | read | read |
+| Teams | create, rename, archive and restore, including a member's move, addition or removal dated back to an open day, and each team's one manager through Change manager; the Teams page is theirs alone | read, within their teams (filters and team links); remove a member (not a team manager) from the person's panel, from today | — |
+| Projects | create, edit, staff anyone, choose activities; archive and restore are theirs alone | create, edit, staff their own people, choose activities from the catalogue | only their own, through `GET /projects/me` and `GET /projects/me/activities`, with the client name; the client name also on their own time entries |
+| Activities, Categories | create, edit, archive and restore | read | read |
 | Time logs — read | whole company | own, plus users in teams they manage | own only |
 | Time logs — write | whole company, a deactivated person's days before they left included | own, plus users in teams they manage, the same way | **own only** |
 | Absences — read and write | as time logs | as time logs | own only |
@@ -850,6 +864,8 @@ the team and project panels say "Last day" and the date after their position.
 | Planning — write, a period (a day is a period of one day), and its preview | any active user | self + managed users | — |
 | Reporting periods | reopen + close | read | read |
 | Hours and people reports | whole company | own, plus users in teams they manage | own only, through the same routes |
+| Working hours | a person's hours and the company's standard day: set, schedule and cancel a change | reads own expected hours; their team's come with Team time and Reports | reads own expected hours |
+| Setup wizard and checklist | theirs alone | — | — |
 | Hours export, timeline | whole company | own, plus users in teams they manage | — |
 
 This matrix is what the code does today. Why it is shaped this way —
@@ -857,41 +873,27 @@ Owner-owned structure, manager-operated teams — is in
 [`permission-model.md`](./permission-model.md).
 
 **Manager scope comes from team leadership, not from the role.** A MANAGER who
-leads no team sees nobody else, and under D9 may therefore edit nobody's time but
-their own; like everyone, they can always read their own time logs, absences,
-plan and hours. Scope is computed from the `TeamMembership` rows of the teams
-they lead now (`roleInTeam = MANAGER`, still open), by date: a manager reaches
-a person on the days that person was in one of those teams, from the day the
-membership starts up to the day before it ends, so the day of a move belongs
-to the new team. After a move the old team keeps its history and its past
-figures, and the new team's manager reaches nothing from before it
-(`permission-model.md` §3.3). The lists that are about now (People,
-pickers, project rosters) read current membership.
+leads no team sees nobody else and edits nobody's time but their own; like
+everyone, they always read their own time logs, absences, plan and hours.
+Scope is computed by date from the `TeamMembership` rows of the teams they
+lead now (`roleInTeam = MANAGER`, still open); the lists that are about now
+(People, pickers, project rosters) read current membership. How a team keeps
+its history after a move is in
+[`permission-model.md`](./permission-model.md) §3.3.
 
-D9 is implemented: `TimeLogsService` shares one scope check between reads and
-writes, so the two cannot drift apart, and the Team time grid is where an
-owner or manager acts on it. A deactivated person's time and absences can
-still be corrected in open months by the same people, so their last month
-can be finished without reactivating them; nothing can be dated after their
-last working day, or inside a spell between a last working day and the first
-day back (`permission-model.md` §3.7).
+`TimeLogsService` shares one scope check between reads and writes, so the two
+cannot drift apart, and the Team time grid is where an owner or manager acts
+on it. A deactivated person's last month can still be corrected by the same
+people (`permission-model.md` §3.7).
 
-Team structure is the Owner's: only an owner creates, renames or archives a
-team, adds a member, moves one between teams or changes a team's manager. A manager may remove a member
-from a team they lead, from today, because removal only narrows their own reach
-from then on; dating a removal back is the owner's, since it would take past
-days from the team's history. Taking a team's manager off it,
-themselves included, is the owner's, since that would narrow someone
-else's reach or leave the team without its lead.
-
-Only a user with the MANAGER role can be a team's manager; the Owner, who already
-acts for everyone, cannot. Change manager makes an Employee of the team a Manager
-in the same change, so nobody becomes a Manager who leads nothing by accident. A
-Manager who leads a team cannot be changed to another role until they no longer
-lead it, and the refusal names the team. A team is archived only once
-it is empty (no open membership, no pending invitation), which the owner does on
-its panel; archiving then changes only its status, an archived team is
-read-only, and restoring it brings it back as it was.
+**Team structure is the owner's**: creating, renaming and archiving a team,
+adding or moving a member, changing its manager and dating any change back. A
+manager may only remove a member who is not the team's manager from a team
+they lead, from today. Only a user with the MANAGER role leads a team, and a
+refused role change names the team they still lead. A team is archived only
+once it is empty (no open membership, no pending invitation), is read-only
+while archived, and is restored as it was. The reasons are in
+`permission-model.md` §3.2–§3.3.
 
 Company-wide structure is the owner's: teams, the activity and category
 catalogue, archiving and restoring a project (which removes everyone's plans on
@@ -900,12 +902,10 @@ staff them with their own people and choose their activities from the catalogue.
 
 ---
 
-## 6. Where the product actually stands
+## 6. What the product does today
 
-Every feature in the original plan is built, and the authorization gaps found
-early on are all closed. What the product lacks now is polish and breadth: how
-easy it is to use, how the reports present their answers, what employees can
-see, and how a new company gets started.
+Every part below is built and works end to end. Planning and Reports, the two
+largest screens, have sections of their own after the list.
 
 ### Working end to end
 
@@ -920,7 +920,8 @@ see, and how a new company gets started.
   cookies, rotating refresh tokens that survive concurrent refreshes, password
   reset that signs you in, changing or setting your own password,
   invitation-based signup by password or Google. Rate limits count signed-in
-  traffic per session and sign-in attempts per account.
+  traffic per session and sign-in attempts per account. Sign-in takes only
+  JSON bodies, so another site can't sign a browser in to its own account.
 - **Log my time** (`/timesheet`, the employee's timesheet) — the most complete feature and the best reference for
   frontend conventions. Log, edit and delete time against assigned projects,
   driven by company work settings, with loading, error, empty and over-target
@@ -957,7 +958,8 @@ see, and how a new company gets started.
   as on Planning. Saturday and Sunday are left out unless someone shown has
   time on one, and open from Friday's heading. They correct the week in the
   grid: a chip opens that entry, the empty part of a day logs time for the
-  person ("No time" on an empty past working day), and an absence is added
+  person ("No time" on an empty past working day; for someone on no project
+  the form points to Projects), and an absence is added
   from a day: from its Log time form, or from a day still to come. A search by name
   or position, a sort by name or by how
   much of the expected time is logged, and filters by team and project
@@ -997,44 +999,6 @@ see, and how a new company gets started.
   hours", and the week views show their hours alone, never over. The owner is
   listed in People to themselves only, and edits their own position and working
   hours on their panel; nobody else manages the owner's account there.
-- **Planning** — owners and managers plan their people by project on
-  `/planning`, which opens on the current month, with `Month | Week` to
-  switch; the choice and the period shown are in the URL, so a link to a week
-  still opens that week. The month has a column per week, holding
-  the month's working days only, so an edge week can be a day wide: in each,
-  a project's plan is a bar across its days, named when it covers two days or
-  more, over the days' grounds (an absence striped, a day the row doesn't
-  hold for the viewer closed), with the week's hours only when they are short
-  of or over what is available, in amber when over. A week's cell opens that
-  week. In the week, a plan repeated with the same hours on days next to each
-  other is one bar, its hours first ("6h Customer Portal Redesign"); the days
-  only show what is planned. Planning starts from the person: "Plan period",
-  beside the name when the person is pointed at, opens the period dialog on
-  the week or month shown, for a month at a time or any range, several
-  projects with hours per working day, with a preview of the working days,
-  the absences skipped, what is already planned and anything that does not
-  fit before saving, all-or-nothing; a `Week | Month` control beside its
-  arrows sets what they step by. Each row reads planned against available
-  hours with a bar, the month in decimal hours as Reports ("136.5h"), saying
-  "of …" only when the two differ, and says which no longer fit ("Over by").
-  It is narrowed as Team time is, by team, project (active ones only, since
-  nothing is planned on an archived one) and a search by name or position,
-  with the same "Clear filters" when nothing matches, and kept in the URL
-  the same way. Under a project the rows are the people on it or with a plan
-  on it, each showing only its plans and its hours ("on Acme redesign"). The
-  toolbar totals the people shown ("Planned 120h / 160h" against their
-  available hours; the planned hours alone under a project). A week or month
-  lists the people with working hours in it or plans on it: someone at 0h
-  shows only with plans left from before, marked "No fixed hours", with
-  nothing to plan; a leaver shows while they still had days in it, the days
-  after their last closed; someone who moved out of the team during it is
-  planned on their days in it. A week or month wholly in locked months offers
-  no "Plan period". A day can be planned up to the person's own working day,
-  in 15-minute steps, and an absence can be added from the period dialog.
-  A day's, a bar's and an over-plan figure's details show in the same styled
-  tooltip as Team time's. Everyone sees their own plan on the timesheet until
-  they log time that day, as light blocks in the project's colour that open the time form on
-  that project; recording a whole-day absence removes the plans on its days.
 - **Closing periods** — each month locks by itself 7 days after it ends, and an
   owner can reopen a locked month from `/admin/periods` and close it again,
   each after a confirmation; the page lists the months back to the company's
@@ -1044,63 +1008,6 @@ see, and how a new company gets started.
   says until when last month can be edited, on a hover or a tap. Reopening a
   month says that working hours still can't change from it while a later
   month is locked.
-- **Reports** — owners and managers see one overview on `/reports` for a
-  month, a quarter, a year or a custom range of up to 366 days, stepped with
-  arrows from the company's first month and kept in the address, and for one
-  team at a time: an owner any team, a manager who leads several any of
-  theirs, the export included. A badge names what the figures cover:
-  the period once it has ended ("October 2026", "Q3 2026"), and while it runs
-  the days counted so far ("Nov 1 - Nov 7 so far"). The band's three figures
-  are time logged against what was expected (capacity minus time off), what was
-  planned against it, and billable time against logged (by each entry's flag,
-  D2), each with its share; nothing is compared with the period before, since
-  part of a running period against a whole one says nothing. Below, week by
-  week (month by month past 92 days, from the company's first month, a week
-  with no working day and nothing on it left out): each column a pale block of
-  what was expected with what was logged, its billable part striped, planned
-  standing beside it, time past what was expected ending the column in the
-  warning colour, with its figures on hover. A longer period links to the
-  months in it still open. While a month is open, "Needs attention" says each
-  kind of problem once, in at most two cards, each name opening its panel:
-  people with working days with no time logged (in a month still running,
-  only for weeks that have ended, since many log their week on Friday), owners
-  included, and projects at least 8h and over a tenth off their plan, or client
-  projects with 8h or more and no plan (in a month still running, only over
-  plan, since late logging only lowers logged time). None is about somebody
-  logging less than expected; a plan beyond someone's hours is Planning's to
-  warn about. A locked month is for reference and marks nothing.
-  Reports report working time, not absences: a person is listed when, on the
-  days the view holds them while employed, they had working hours (before time
-  off) or logged or planned time, whatever their role or status; time off
-  lowers what is expected and counts as days off only on days with working
-  hours, part of a day away as hours beside them ("3 days · 2h 25m"). People is one table, each person once with their figures on the days
-  the view holds, so the rows add up to the band: Logged, Expected, the share of
-  expected with a bar (billable striped, time past expected in the warning
-  colour) and Billable as a share of logged. Under a person's name is their
-  position, with "Last day" and the date for a leaver or, under a team
-  filter, "Joined" or "Moved out" and the date in the same line. It opens on the
-  people furthest from what was expected, either way, those expected to work
-  nothing last; any column sorts from its header, and the first ten show until
-  the rest are asked for. Where the time went switches between projects and the
-  kind of work: projects as a table of Logged, Planned, the difference with a
-  bar ("+71.5h", "0h", "no plan") and Billable, most logged first, or logged
-  time by activity category, the five largest each in a colour of its own and
-  named with its hours, the rest in an "Other" that opens. Where a card is too
-  narrow for the columns, beside an open panel or on a phone, each row is the
-  name with its main figure, a short note and the bar. The one mark is a dot
-  beside what Needs attention names. Figures are in decimal hours, up to two
-  decimals ("1,412.5h"); the export keeps exact time. It is a fact, not a score
-  (D3): nothing is red or green. A person's name opens their whole period, under
-  a team filter too: logged against expected, their plan, billable time, days
-  off and days with no time logged, each marked in the chart's colours, their
-  teams in date order with their days and figures (a team archived since
-  says so beside its days, "No team", or
-  "My time" for the viewer's own days outside the teams shown), and their
-  projects against plan, with a link to Team time; a project's name opens its
-  billable time and its people against their plans. Everything counts finished
-  days only (§4, capacity and expected hours). Managers see only the team they
-  lead, and choose a team only if they see more than one; in another person's
-  panel they see only their team's part.
 - **Review my time** — every role has `/my-time`, their own month, one at a time,
   back to the company's first: logged against expected with their days off,
   planned, billable and its share, every working day of the month (a past day
@@ -1135,116 +1042,180 @@ see, and how a new company gets started.
   somebody can log time (§4, company settings), the welcomes on Team time and
   the timesheet, and Getting started for every role.
 
-### Decided while building, and still in force
+### Planning
 
-- **Pages are named by what you do there**. The
-  timesheet is "Log my time", a person's own month "Review my time", and the
-  team's week stays "Team time", with no period in a name so it holds as the
-  pages grow. Only what a user sees changed (menu, headings, wording); routes
-  and code keep `/timesheet`, `/my-time` and `/team`.
+**Month and week.** Owners and managers plan their people by project on
+`/planning`, which opens on the current month, with `Month | Week` to switch;
+the choice and the period shown are in the URL, so a link to a week still opens
+that week. The month has a column per week, holding the month's working days
+only, so an edge week can be a day wide: in each, a project's plan is a bar
+across its days, named when it covers two days or more, over the days' grounds
+(an absence striped, a day the row doesn't hold for the viewer closed), with
+the week's hours only when they are short of or over what is available, in
+amber when over. A week's cell opens that week. In the week, a plan repeated
+with the same hours on days next to each other is one bar, its hours first ("6h
+Customer Portal Redesign"); the days only show what is planned.
 
-- **One visual language**. A pill marks only what
-  someone has to act on (No team, No active manager, Expired, Closing soon,
-  Reopened), in amber so a warning never reads as an error; a fact
-  (Deactivated, Archived, Locked, Open, a role) is quiet text. A page with a
-  period has one toolbar: the period control on the left, the total on the
-  right as "Logged 30h / 128h" with a bar, actions last; it stays while the
-  content loads, and a part that fails to load says so with Try again. The
-  company's and a person's working day are one field. Dates read in US English
-  whatever the browser's language.
+**Plan period.** Planning starts from the person: "Plan period", beside the
+name when the person is pointed at, opens the period dialog on the week or
+month shown, for a month at a time or any range, several projects with hours
+per working day, with a preview of the working days, the absences skipped, what
+is already planned and anything that does not fit before saving,
+all-or-nothing; a `Week | Month` control beside its arrows sets what they step
+by.
 
-- **A look of its own**. The design stayed; what it
-  had by default was replaced by choices made for this product. The page and
-  the menu share one warm paper tone and the brand is a deeper teal; every
-  project has its own colour, from ten made for the product; the typeface is
-  new, every figure is set in aligned digits and no heading is in capitals.
-  The screens people work in carry no shadows, glows, gradients or icon
-  tiles. The logo is a mark of three bars instead of a letter, and the brand
-  pattern repeats it: behind the password and error pages and, faintly, on
-  the band of Reports and Review my time. The pages before sign-in (signing
-  in, joining, the home page's first screen) share one dark, softly lit
-  surface. One teal
-  bar marks where you are (the menu, the open row, today, the selected tab),
-  and pointing at something only darkens it slightly, so the two never look
-  alike. In the week grids logged time and a plan differ by how much of
-  their project's colour they carry, never by a line around them (below); a day that can be changed is white and a locked one grey. In Log
-  my time the expected hours are one line
-  across the whole week.
+**Rows, filters and totals.** Each row reads planned against available hours
+with a bar, the month in decimal hours as Reports ("136.5h"), saying "of …"
+only when the two differ, and says which no longer fit ("Over by"). It is
+narrowed as Team time is, by team, project (active ones only, since nothing is
+planned on an archived one) and a search by name or position, with the same
+"Clear filters" when nothing matches, and kept in the URL the same way. Under a
+project the rows are the people on it or with a plan on it, each showing only
+its plans and its hours ("on Acme redesign"). The toolbar totals the people
+shown ("Planned 120h / 160h" against their available hours; the planned hours
+alone under a project).
 
-- **Absences, plans and month end at the edges**. An
-  absence that runs into a locked month keeps its days there and its reason
-  and note; its open days can still move, and deleting it removes only
-  those. An absence deletes the plans on its days whoever made them, and
-  tells whoever changed each plan last, or its author when nobody did,
-  in-app, within what that person can see and without its type. The absence form waits until it knows which plans it removes. Time
-  and absences may still be recorded on days before someone's account was
-  created; Planning closes those days, as the save refuses plans there. A
-  manager sees the month-end deadline as an amber lock on Team time and
-  Reports, and logging time for someone on no project points to Projects.
+**Who is listed.** A week or month lists the people with working hours in it or
+plans on it: someone at 0h shows only with plans left from before, marked "No
+fixed hours", with nothing to plan; a leaver shows while they still had days in
+it, the days after their last closed; someone who moved out of the team during
+it is planned on their days in it. A week or month wholly in locked months
+offers no "Plan period".
 
-- **A month in Planning, and one way to plan**.
-  Planning opens on the month, since planning a month ahead is the page's
-  job, and that sets it apart from Team time's week of actual hours; the week
-  is the detail. A person is the one way into planning, on the week and the
-  month, and every plan is made with Plan a period, a single day being a
-  period of one day, so Plan a day, deleting one plan and the plans' notes on
-  screen went. A plan repeated over several days is drawn as one bar. Logged
-  time is a strong tint of its project's colour with its dot and dark text,
-  a plan a light tint with no edge or dot, the same in every week view, and
-  every entry names its hours before its project. Left out on purpose: zoom
-  levels (the month is the one wider view needed), scrolling the week
-  sideways instead of the arrows, and project hour budgets.
+**Limits, and the plan on the timesheet.** A day can be planned up to the
+person's own working day, in 15-minute steps, and an absence can be added from
+the period dialog. A day's, a bar's and an over-plan figure's details show in
+the same styled tooltip as Team time's. Everyone sees their own plan on the
+timesheet until they log time that day, as light blocks in the project's colour
+that open the time form on that project; recording a whole-day absence removes
+the plans on its days.
 
-- **One way to close a dialog**. No dialog has a
-  close button in its header: it closes from its footer, "Cancel" in a form
-  and "Close" in a read-only one and in Notifications. Escape and a click
-  outside ask first while a form has unsaved changes, the management create
-  dialogs included, and do nothing while a save runs. The work dialogs (Log
-  time, an absence, Plan a period) share one frame: the action as
-  the title, who and when beneath, and Delete as a quiet button apart from
-  the one solid primary action. A confirmation's title is a question, and
-  "This can't be undone." is said once. Leaving Settings with unsaved edits
-  asks first too, by a link, a reload or a closed tab; the
+### Reports
+
+**Period and team.** Owners and managers see one overview on `/reports` for a
+month, a quarter, a year or a custom range of up to 366 days, stepped with
+arrows from the company's first month and kept in the address, and for one team
+at a time: an owner any team, a manager who leads several any of theirs, the
+export included. A badge names what the figures cover: the period once it has
+ended ("October 2026", "Q3 2026"), and while it runs the days counted so far
+("Nov 1 - Nov 7 so far").
+
+**The band.** The band's three figures are time logged against what was
+expected (capacity minus time off), what was planned against it, and billable
+time against logged (by each entry's flag, D2), each with its share; nothing is
+compared with the period before, since part of a running period against a whole
+one says nothing.
+
+**Week by week.** Below, week by week (month by month past 92 days, from the
+company's first month, a week with no working day and nothing on it left out):
+each column a pale block of what was expected with what was logged, its
+billable part striped, planned standing beside it, time past what was expected
+ending the column in the warning colour, with its figures on hover. A longer
+period links to the months in it still open.
+
+**Needs attention.** While a month is open, "Needs attention" says each kind of
+problem once, in at most two cards, each name opening its panel: people with
+working days with no time logged (in a month still running, only for weeks that
+have ended, since many log their week on Friday), owners included, and projects
+at least 8h and over a tenth off their plan, or client projects with 8h or more
+and no plan (in a month still running, only over plan, since late logging only
+lowers logged time). None is about somebody logging less than expected; a plan
+beyond someone's hours is Planning's to warn about. A locked month is for
+reference and marks nothing.
+
+**Who is listed.** Reports report working time, not absences: a person is
+listed when, on the days the view holds them while employed, they had working
+hours (before time off) or logged or planned time, whatever their role or
+status; time off lowers what is expected and counts as days off only on days
+with working hours, part of a day away as hours beside them ("3 days · 2h
+25m").
+
+**People.** People is one table, each person once with their figures on the
+days the view holds, so the rows add up to the band: Logged, Expected, the
+share of expected with a bar (billable striped, time past expected in the
+warning colour) and Billable as a share of logged. Under a person's name is
+their position, with "Last day" and the date for a leaver or, under a team
+filter, "Joined" or "Moved out" and the date in the same line. It opens on the
+people furthest from what was expected, either way, those expected to work
+nothing last; any column sorts from its header, and the first ten show until
+the rest are asked for.
+
+**Where the time went.** Where the time went switches between projects and the
+kind of work: projects as a table of Logged, Planned, the difference with a bar
+("+71.5h", "0h", "no plan") and Billable, most logged first, or logged time by
+activity category, the five largest each in a colour of its own and named with
+its hours, the rest in an "Other" that opens. Where a card is too narrow for
+the columns, beside an open panel or on a phone, each row is the name with its
+main figure, a short note and the bar.
+
+**Marks and figures.** The one mark is a dot beside what Needs attention names.
+Figures are in decimal hours, up to two decimals ("1,412.5h"); the export keeps
+exact time. It is a fact, not a score (D3): nothing is red or green.
+
+**A person's and a project's panel.** A person's name opens their whole period,
+under a team filter too: logged against expected, their plan, billable time,
+days off and days with no time logged, each marked in the chart's colours,
+their teams in date order with their days and figures (a team archived since
+says so beside its days, "No team", or "My time" for the viewer's own days
+outside the teams shown), and their projects against plan, with a link to Team
+time; a project's name opens its billable time and its people against their
+plans.
+
+**Scope.** Everything counts finished days only (§4, capacity and expected
+hours). Managers see only the team they lead, and choose a team only if they
+see more than one; in another person's panel they see only their team's part.
+
+### Interface conventions
+
+Rules the screens share, written here because no single component holds them.
+
+- **Words.** Pages are named by what you do there (Log my time, Review my
+  time, Team time). Delete means a record is gone for good (a time entry, an
+  absence, a plan); Remove means a link ends and both sides stay (a person
+  from a team or a project, an activity from a project); Archive means out of
+  use and kept whole. Dates read in US English whatever the browser's
+  language.
+- **Marks.** A pill marks only what someone has to act on (No team, No active
+  manager, Expired, Closing soon, Reopened), in amber so a warning never reads
+  as an error; a fact (Deactivated, Archived, Locked, Open, a role) is quiet
+  text. One teal bar marks where you are (the menu, the open row, today, the
+  selected tab), and pointing at something only darkens it slightly, so the
+  two never look alike.
+- **Toolbars.** A page with a period has one toolbar: the period control on
+  the left, the total on the right as "Logged 30h / 128h" with a bar, actions
+  last; it stays while the content loads, and a part that fails to load says
+  so with Try again.
+- **Week grids.** Logged time is a strong tint of its project's colour with
+  its dot and dark text, a plan a light tint with no edge or dot, the same in
+  every week view; every entry names its hours before its project, and a plan
+  repeated over several days is one bar. A day that can be changed is white
+  and a locked one grey. Every project has its own colour, from ten made for
+  the product.
+- **Dialogs.** No dialog has a close button in its header: it closes from its
+  footer, "Cancel" in a form and "Close" in a read-only one and in
+  Notifications. Escape and a click outside ask first while a form has unsaved
+  changes, the management create dialogs included, and do nothing while a save
+  runs. The work dialogs (Log time, an absence, Plan a period) share one
+  frame: the action as the title, who and when beneath, and Delete as a quiet
+  button apart from the one solid primary action. Leaving Settings with
+  unsaved edits asks first too, by a link, a reload or a closed tab; the
   browser's Back can't be stopped.
-
-- **Confirmations say what happens to the data**.
-  Delete means a record is gone for good (a time entry, an absence, a plan);
-  Remove means a link ends and both sides stay (a person from a team or a
-  project, an activity from a project). The confirm button is red when
-  something is lost that Restore can't bring back, amber when it can be undone
-  but reaches further, the brand colour when it is routine, and green for
-  Restore and Reactivate.
-
-- **Archive means out of use, kept whole, for teams too.** Only an empty team is
-  archived, emptied on its own panel, and restoring is an exact undo; nobody's
-  time, absences or plans change at any point.
-
-- **Ending a link is its own action, and past work reads as it was**
- . Archiving never removes people, links or
-  invitations: what has to happen first blocks the archive and says so. A
-  plan that can no longer happen is removed, and the action that removes it
-  names it first (archiving a project, removing someone from it, recording an
-  absence). Past rows keep their category and their team; a project's client
-  is the exception (D8, read as it is now). A state nobody uses is removed
-  rather than kept (draft activities, `COMPLETED`).
-
-- **A team's week is read and corrected in the Team time grid.** Each day lists its
-  entries, so an owner or manager sees what a week consisted of and fixes it in
-  the cell, with no side panel beside the grid; the timesheet stays the
-  person's own screen.
-- **Reports are for owners and managers.** The Reports page, the timeline and
-  the export are theirs. The hours and People reports answer
-  every role, an employee's pinned to their own rows (`applyUserVisibility`),
-  because Review my time is built from them; the planned-vs-actual route was
-  removed, since the People report covers it and no screen used it.
-- **No utilisation ratios**. Billable utilisation, client share,
-  non-billable client share and logging completeness were replaced by plain
-  hours: one bar per row against expected or planned hours, with whole-hour
-  figures. Comparable products define "utilisation" in inconsistent ways, and
-  a ratio per person reads as a score.
-- **Periods are calendar months that lock by themselves**, worked out from the
-  date on every check, because a scheduled job would miss days while the
-  backend sleeps.
+- **Confirmations.** A confirmation's title is a question, and "This can't be
+  undone." is said once. The confirm button is red when something is lost that
+  Restore can't bring back, amber when it can be undone but reaches further,
+  the brand colour when it is routine, and green for Restore and Reactivate.
+  What has to happen first blocks an action and says so (archiving never
+  removes people, links or invitations), and an action that removes plans
+  names them first.
+- **Figures are plain hours.** No utilisation ratios and no scores: one bar
+  per row against expected or planned hours, since a ratio per person reads as
+  a score (D3).
+- **Look.** The screens people work in carry no shadows, glows, gradients or
+  icon tiles; figures are set in aligned digits and no heading is in capitals.
+  Colours and type come from the tokens in `apps/frontend/app/globals.css`.
+- **Left out on purpose.** Zoom levels in Planning (the month is the one wider
+  view needed), scrolling a week sideways instead of the arrows, project hour
+  budgets, and a side panel beside the Team time grid.
 
 ### Fields that exist but do nothing
 
@@ -1252,52 +1223,18 @@ see, and how a new company gets started.
 | :--- | :--- |
 | `Company.currency` | Read by no logic and no longer asked for or shown. **Should stay unused** under D7. |
 | `Company.deletedAt` | Column with no soft-delete behaviour behind it. |
-| `PlanningEntry.note` | Kept on older plans; no screen or route reads or writes it since, so no migration was needed. |
-
-### Authorization
-
-Every gap found in the original review is closed: managers cannot widen their
-own reach, invitations place people in the inviter's team, project rosters and
-staffing are scoped to the caller, and project and admin routes are guarded by
-role on the server and in the pages. Every route needs a session unless it is
-marked public, and a test that lists every route with the roles it allows
-fails when a route's access changes. What a manager may see and change is one
-rule everywhere — the people in the teams they lead, on the days they were in
-them, plus themselves — and they learn nothing about anyone outside it, Invite
-and Planning included. Sign-in takes only what the app sends: JSON bodies, so
-another site can't sign a browser in to its own account, and the tokens stay
-in cookies, never in a response.
-[`permission-model.md`](./permission-model.md) describes the model.
+| `PlanningEntry.note` | Kept on older plans; no screen or route reads or writes it. |
 
 ### Engineering state
 
-This is the one place that counts the tests. Backend coverage is fifty-one
-suites and 1056 tests, covering the roles of every route and the whole app over
-HTTP (every route refused signed out but the public ones), the role-visibility filters and reach by team
-membership dates (a team keeping its history after a move), team and invitation
-rules, the Google callbacks and notifications, time-log, absence, capacity and
-planning rules, a month of plans read with a week's rows, an absence across a locked month and the notice to whoever last changed the plans it removes, who added and changed a time entry or an absence, the lock
-order between plan saves and project changes, monthly locking in and outside UTC and a Close that waits for
-an open write, the reports and the export (weeks or months on the timeline,
-one team, the export's file name), page and date-range limits, name
-checks, the order of people and projects by name, the seed's local-only guard, the Neon migration risk check, and
-session refresh, a sign-in racing a deactivation, rate limits and token clean-up — most against a real
-database.
-The frontend has eighty-one Vitest files and 479 tests: its date, month,
-absence, lock, paging and time zone helpers, the report range check, the
-period Reports shows (in the address, stepped and switched between units),
-the chart's labels and start, decimal hours, a day's fill at 0h, a team's
-billable sum, tab
-keyboard navigation and download file names, and component tests in jsdom for
-the sidebar and phone menu, sign-out, the shared states and form field, the
-Manage lists, panel and confirmation dialogs, the work and create dialogs'
-discard check,
-the time entry form, the duration stepper, the timesheet day column and its
-list of days on a phone, the
-Team time view, its day cells, rows, filters and sort order, the Planning
-view, its week row and period dialog, a month's weeks and a row's plan bars, the week a grid shows, the month a report shows, the week calendar, the week summary, the order of a day's entries, the Periods list and its paging, the Review my time page, who may choose one team on Reports, the notifications menu, a side panel's focus after Back, and the proxy's and the HTTP client's session handling. GitHub Actions runs the
-formatting check, lint with no warnings allowed, typecheck, build and tests for
-both applications on every pull request.
+The backend tests run mostly against a real database. They cover the roles of
+every route (a test that lists each route with the roles it allows fails when a
+route's access changes), reach by team membership dates, and the time,
+absence, capacity, planning, locking, report and session rules. The frontend's
+Vitest suites cover its date, lock and time zone helpers and the main screens'
+components in jsdom. GitHub Actions runs the formatting check, lint with no
+warnings allowed, typecheck, build and tests for both applications on every
+pull request.
 
 The backend has a production image (`apps/backend/Dockerfile`); the frontend is
 built by its host. A shared development stand runs on Vercel, Render and Neon on
@@ -1313,35 +1250,7 @@ from 2000 to 2100, and input the database can't hold is refused (400).
 
 ---
 
-## 7. Target product
-
-### What "finished" looks like
-
-For the company using it:
-
-- **Every employee** logs their week quickly against the projects they are on,
-  marking client work billable or not, and can see at a glance whether their week
-  is accounted for — with absences explaining any gaps rather than reading as
-  missing time.
-- **Every manager** opens one screen and sees their team's week: who logged, who
-  is short, where the time went. They can plan upcoming work for their people
-  without that plan constraining anyone.
-- **The owner** sees the same across the company, closes periods once hours have
-  been used for invoicing, and can export hours — split by client, project, and
-  billable/non-billable — to hand to whoever produces the invoices. A manager
-  can export the same for the teams they lead.
-- **Nobody** approves anybody's timesheet. Someone else's time can be corrected
-  by their manager or by the owner, inside an open period, and never by anyone
-  else (D9).
-
-The features behind all four are built. What is not there yet is the quality
-that makes people want to use them: fast entry, screens that behave the same
-way, reports that answer questions at a glance, and a company that can get
-itself started without help.
-
----
-
-## 8. Constraints that must survive every future change
+## 7. Constraints that must survive every future change
 
 Short list. These are the things that would be expensive or dangerous to break.
 
@@ -1364,10 +1273,3 @@ Short list. These are the things that would be expensive or dangerous to break.
    a team or a project.
 7. **Aggregate in the database.** Client-side summing does not survive company
    scale.
-
----
-
-## 9. Documentation map
-
-The [README](../README.md#documentation) lists every document and what it
-covers.

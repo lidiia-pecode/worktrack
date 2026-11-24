@@ -1,5 +1,3 @@
-// apps/backend/src/invitations/invitations.controller.ts
-
 import {
   Body,
   Controller,

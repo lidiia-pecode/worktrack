@@ -1,5 +1,3 @@
-// apps/backend/src/auth/helpers/cookies-extractor.ts
-
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 import type { Request } from 'express';
 

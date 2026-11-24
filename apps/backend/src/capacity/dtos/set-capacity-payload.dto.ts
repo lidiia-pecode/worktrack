@@ -11,8 +11,8 @@ export class SetCapacityPayload {
   userId!: string;
 
   /**
-   * Five working days of up to 12h each, set in 30-minute steps a day (Phase
-   * 41, decision 6), so the day expected and planned is never an odd minute.
+   * Five working days of up to 12h each, set in 30-minute steps a day, so the
+   * day expected and planned is never an odd minute.
    */
   @IsInt()
   @Min(0)

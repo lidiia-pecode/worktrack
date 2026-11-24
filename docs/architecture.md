@@ -81,6 +81,46 @@ enforced in `TimeLogsService`.
 | Schema change | the entity, then `apps/backend/src/migrations/`; [`workflow.md`](./workflow.md) for getting it onto Neon |
 | Get a change reviewed and merged | [`workflow.md`](./workflow.md) |
 
+## Screens
+
+The name a screen has in the app, its route under `apps/frontend/app/`, and
+the folder under `app/components/` that holds it.
+
+| In the app | Route | Components | Who |
+| :--- | :--- | :--- | :--- |
+| Team time | `/team` | `team` | owner, manager |
+| Planning | `/planning` | `planning` | owner, manager |
+| Reports | `/reports` | `reports` | owner, manager |
+| Log my time | `/timesheet` | `timesheet` | everyone |
+| Review my time | `/my-time` | `my-time` | everyone |
+| Manage → People | `/admin/users` | `users` | owner, manager |
+| Manage → Projects | `/admin/projects` | `projects` | owner, manager |
+| Manage → Teams | `/admin/teams` | `teams` | owner |
+| Manage → Activities | `/admin/activities` | `activities` | owner |
+| Manage → Categories | `/admin/categories` | `categories` | owner |
+| Manage → Periods | `/admin/periods` | `periods` | owner |
+| Getting started | `/getting-started` | `onboarding` | everyone |
+| Settings | `/settings` | `settings` | everyone |
+| Setup wizard | `/onboarding` | `onboarding` | owner |
+
+## Names that differ between the app and the code
+
+- **Team time and Teams.** `/team` is the week of a manager's people; the
+  Teams page, where the owner sets teams up, is `/admin/teams`.
+- **Manage** is the menu group for every `/admin/*` page; **People** is
+  `/admin/users`.
+- **Working hours** are `Capacity` in the code (`UserCapacity`, the
+  `capacity` module); the company's standard day is `CompanyStandardDay`.
+- **A category** is `ActCategory`, in the `activity-categories` module.
+- **Deactivate and Reactivate** are the `archive` and `unarchive` routes of a
+  user.
+- **`proxy.ts`** is what Next.js calls middleware: it runs before every page.
+- **`components/ui`** holds the generic building blocks (button, dialog,
+  input); **`app/components`** holds WorkTrack's own screens and the parts
+  they share (`app/components/shared`).
+- **`lib/constants/time-zones.generated.ts`** is written by
+  `npm run generate:time-zones` in `apps/frontend`, never by hand.
+
 ## Current state
 
 What the product does today, its test coverage and engineering state are in
