@@ -83,7 +83,7 @@ export class NotificationsService {
   }
 
   /**
-   * Tells the author of plans that an absence removed some of them, in the
+   * Tells whoever planned them that an absence removed some plans, in the
    * absence's transaction. The caller decides who is told, and about which
    * days.
    */

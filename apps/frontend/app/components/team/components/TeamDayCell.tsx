@@ -16,9 +16,9 @@ import {
   isWeekend,
 } from "@/lib/utils/date";
 
-import { TimelogPopover } from "../../timesheet/components/TimelogPopover";
-import { ABSENCE_PATTERN } from "../../timesheet/consts";
-import { dayFill } from "../../timesheet/helpers/day-fill";
+import { TimelogPopover } from "../../shared/time-entry/TimelogPopover";
+import { ABSENCE_PATTERN } from "../../shared/week/day-styles";
+import { dayFill } from "../../shared/week/day-fill";
 import { EntryChip } from "../../shared/week/EntryChip";
 import { TimelogChip } from "./TimelogChip";
 

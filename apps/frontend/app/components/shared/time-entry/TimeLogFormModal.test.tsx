@@ -4,9 +4,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { PickerProjectActivity } from "@/hooks/useAssignableActivities";
 import { TimeLog } from "@/types";
-import { ActivityStatus } from "@/types/enums";
+import {
+  ActCategoryStatus,
+  ActivityStatus,
+  ProjectStatus,
+} from "@/types/enums";
 
-import { lastEntryChoiceKey } from "../helpers/last-entry-choice";
+import { lastEntryChoiceKey } from "./last-entry-choice";
 import { TimeLogFormModal } from "./TimeLogFormModal";
 
 const REMEMBER_KEY = lastEntryChoiceKey("viewer-1", "user-1");
@@ -62,7 +66,7 @@ const archivedEntry: TimeLog = {
       id: "project-1",
       name: "Mobile App",
       clientName: "Retail Corp",
-      status: "ARCHIVED",
+      status: ProjectStatus.ARCHIVED,
     },
     activity: {
       id: "activity-1",
@@ -73,7 +77,7 @@ const archivedEntry: TimeLog = {
       category: {
         id: "category-1",
         name: "Design",
-        status: "ACTIVE",
+        status: ActCategoryStatus.ACTIVE,
         createdAt: "2026-01-01T00:00:00Z",
         updatedAt: "2026-01-01T00:00:00Z",
       },

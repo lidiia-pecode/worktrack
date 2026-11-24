@@ -16,7 +16,7 @@ import { isDatabaseConflictError } from 'src/lib/utils/is-db-conflict-error';
 import { Company } from 'src/companies/entities/company.entity';
 import { findCompanyToday } from 'src/companies/company-today.util';
 import { ReportingPeriod } from './entities/reporting-period.entity';
-import { findLatestLockedDate } from './latest-locked-date.util';
+import { PeriodLocksService } from './period-locks.service';
 import { ReportingPeriodStatus } from './enums/reporting-period-status.enum';
 import { ReportingMonthState } from './enums/reporting-month-state.enum';
 import {
@@ -213,6 +213,7 @@ export class ReportingService {
     @InjectRepository(Company)
     private readonly companyRepo: Repository<Company>,
     private readonly teamVisibility: TeamVisibilityService,
+    private readonly periodLocks: PeriodLocksService,
   ) {}
 
   // ==========================================
@@ -346,81 +347,6 @@ export class ReportingService {
     });
   }
 
-  async isDateLocked(
-    companyId: string,
-    date: string,
-    manager?: EntityManager,
-  ): Promise<boolean> {
-    return this.isRangeLocked(companyId, date, date, manager);
-  }
-
-  /**
-   * True when any day between the two dates is locked.
-   *
-   * Inside a write's transaction, pass its `manager`: the period rows are then
-   * read with a share lock, so a Close or Reopen of one of those months waits
-   * until the write has finished instead of slipping in between the check and
-   * the save.
-   */
-  async isRangeLocked(
-    companyId: string,
-    startDate: string,
-    endDate: string,
-    manager?: EntityManager,
-  ): Promise<boolean> {
-    const locked = await this.lockedMonthsIn(
-      companyId,
-      startDate,
-      endDate,
-      manager,
-    );
-    return locked.length > 0;
-  }
-
-  /**
-   * The locked months between the two dates, each as its first day, oldest
-   * first. Pass a write's `manager` as for `isRangeLocked`.
-   */
-  async lockedMonthsIn(
-    companyId: string,
-    startDate: string,
-    endDate: string,
-    manager?: EntityManager,
-  ): Promise<string[]> {
-    const today = await findCompanyToday(
-      manager ?? this.companyRepo.manager,
-      companyId,
-    );
-    const autoLocked = monthsBetween(startDate, endDate).filter((month) =>
-      isAutoLocked(month, today),
-    );
-
-    if (autoLocked.length === 0) return [];
-
-    const reopened = await this.findReopenedMonths(
-      companyId,
-      autoLocked,
-      manager,
-    );
-    return autoLocked.filter((month) => !reopened.has(month));
-  }
-
-  /**
-   * The last day of the newest locked month. Anything effective on or before
-   * it would rewrite a closed month. Takes a write's `manager` like
-   * `isRangeLocked`, for the same reason.
-   */
-  async latestLockedDate(
-    companyId: string,
-    manager?: EntityManager,
-  ): Promise<string> {
-    return findLatestLockedDate(
-      manager ?? this.companyRepo.manager,
-      companyId,
-      Boolean(manager),
-    );
-  }
-
   private stateOf(
     month: string,
     today: string,
@@ -435,32 +361,6 @@ export class ReportingService {
     return reopened.has(month)
       ? ReportingMonthState.REOPENED
       : ReportingMonthState.LOCKED;
-  }
-
-  /**
-   * The first days of the months an owner has reopened, optionally only among
-   * the given ones. With a transaction's `manager`, the rows are share-locked
-   * until it ends (see `isRangeLocked`).
-   */
-  private async findReopenedMonths(
-    companyId: string,
-    among?: string[],
-    manager?: EntityManager,
-  ): Promise<Set<string>> {
-    const rows = await (manager ?? this.periodRepo.manager).find(
-      ReportingPeriod,
-      {
-        where: {
-          companyId,
-          status: ReportingPeriodStatus.OPEN,
-          ...(among && { month: In(among) }),
-        },
-        select: ['month'],
-        ...(manager && { lock: { mode: 'pessimistic_read' } }),
-      },
-    );
-
-    return new Set(rows.map((row) => row.month));
   }
 
   /** The month's row, locked against another Close or Reopen until the transaction ends. */
@@ -532,7 +432,10 @@ export class ReportingService {
     today: string,
   ): Promise<Set<string>> {
     const months = monthsBetween(dateFrom, dateTo);
-    const reopened = await this.findReopenedMonths(companyId, months);
+    const reopened = await this.periodLocks.findReopenedMonths(
+      companyId,
+      months,
+    );
 
     return new Set(
       months.filter(

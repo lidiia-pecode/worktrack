@@ -23,13 +23,6 @@ export const TableBody = (props: ComponentProps<"tbody">) => (
   <tbody {...props} />
 );
 
-/** The one totals row, set apart by a heavier border. */
-export const TableFooter = ({ children }: { children: ReactNode }) => (
-  <tfoot>
-    <tr className="border-t-2 border-border bg-muted/10">{children}</tr>
-  </tfoot>
-);
-
 export const TableRow = ({ className, ...props }: ComponentProps<"tr">) => (
   <tr
     className={cn("border-b border-border last:border-b-0", className)}

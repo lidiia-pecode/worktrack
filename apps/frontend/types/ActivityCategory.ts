@@ -10,7 +10,7 @@ import {
 export interface ActivityCategoryResponse {
   id: string;
   name: string;
-  status: string;
+  status: ActCategoryStatus;
   createdAt: string;
   updatedAt: string;
 }

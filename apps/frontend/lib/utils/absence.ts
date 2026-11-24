@@ -37,6 +37,11 @@ export const isPartDayAbsence = (
   absence: Pick<Absence, "minutes">,
 ): absence is { minutes: number } => typeof absence.minutes === "number";
 
+/** A whole day or days away, which take no time and no plans. */
+export const isWholeDayAbsence = (
+  absence: Pick<Absence, "minutes"> | undefined,
+): boolean => !!absence && !isPartDayAbsence(absence);
+
 /** "vacation", or "vacation 2h 25m" for part of a day, after a day's name. */
 export const absenceDayText = (absence: Absence) => {
   const reason = ABSENCE_TYPE_LABELS[absence.type].toLowerCase();

@@ -177,7 +177,7 @@ each, its name, status and client name, and nothing about any other project.
 
 Each team's manager answers for that team's people and their work on a
 project; a question outside their team goes to the Owner. A responsible person
-per project was considered and dropped in September 2026, before any code: one
+per project is deliberately absent: one
 name would flatten a per-team relationship and repeat by hand what the team
 memberships already hold. Per-project rights would be a new decision.
 

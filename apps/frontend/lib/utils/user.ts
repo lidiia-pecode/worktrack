@@ -39,14 +39,14 @@ export const changedByText = ({
   return null;
 };
 
-export const hasManagerAccess = (role?: string) =>
+export const hasManagerAccess = (role?: UserRole) =>
   role === UserRole.MANAGER || role === UserRole.OWNER;
 
 /** Activities and categories classify everyone's time, so only the owner changes them. */
-export const canManageCatalogue = (role?: string) => role === UserRole.OWNER;
+export const canManageCatalogue = (role?: UserRole) => role === UserRole.OWNER;
 
 /** Archiving a project reaches everyone on it, so only the owner archives or restores one. */
-export const canArchiveProjects = (role?: string) => role === UserRole.OWNER;
+export const canArchiveProjects = (role?: UserRole) => role === UserRole.OWNER;
 
 export const isDeactivatedUser = (user: { status?: UserStatus }) =>
   user.status === UserStatus.DEACTIVATED;
@@ -100,7 +100,7 @@ export const moveLabel = ({ date, direction }: TeamMove) =>
  * closed days (`isClosedOn`), which the caller checks.
  */
 export const canWriteTimeLogsFor = (
-  role: string | undefined,
+  role: UserRole | undefined,
   viewerId: string,
   targetUserId: string,
 ) => hasManagerAccess(role) || viewerId === targetUserId;

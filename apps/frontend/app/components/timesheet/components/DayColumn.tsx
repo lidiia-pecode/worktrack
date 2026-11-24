@@ -11,18 +11,22 @@ import {
   isWeekend,
 } from "@/lib/utils/date";
 import { ABSENCE_TYPE_LABELS, isPartDayAbsence } from "@/lib/utils/absence";
-import { TimelogPopover } from "./TimelogPopover";
+import { TimelogPopover } from "../../shared/time-entry/TimelogPopover";
 import {
   STACK_TOP_INSET_PX,
   offsetAtMinutes,
   partAbsenceHeight,
   stackSegments,
 } from "../helpers/build-segments";
-import { dayFill } from "../helpers/day-fill";
+import { dayFill } from "../../shared/week/day-fill";
 import { dayActions } from "../helpers/day-state";
 import { PlannedSegment } from "./PlannedSegment";
 import { TimelogSegment } from "./TimelogSegment";
-import { ABSENCE_PATTERN, DAY_COLUMN_CLASS, EXCESS_FILL } from "../consts";
+import {
+  ABSENCE_PATTERN,
+  DAY_COLUMN_CLASS,
+  EXCESS_FILL,
+} from "../../shared/week/day-styles";
 import { Badge } from "@/components/ui/badge";
 
 type Props = {

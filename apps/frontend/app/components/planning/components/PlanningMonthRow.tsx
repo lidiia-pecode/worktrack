@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils/cn";
 
 import { TooltipTrigger, type TooltipHandle } from "@/components/ui/tooltip";
 
-import { ABSENCE_PATTERN } from "../../timesheet/consts";
+import { ABSENCE_PATTERN } from "../../shared/week/day-styles";
 import { weekLabel } from "../month-weeks";
 import { describePlanDay, planBars } from "../plan-bars";
 import { hasNoFixedHours, PlanningPersonCell } from "./PlanningPersonCell";

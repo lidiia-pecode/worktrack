@@ -3,34 +3,28 @@ import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
+  NotFoundException,
 } from '@nestjs/common';
 import { DataSource, In } from 'typeorm';
 
-import { AppDataSource } from 'src/data-source';
+import { openTestDataSource } from 'src/lib/testing/data-source';
+import { buildServices } from 'src/lib/testing/services';
 import { Company } from 'src/companies/entities/company.entity';
 import { User } from 'src/users/entities/user.entity';
-import { UserInactivePeriod } from 'src/users/entities/user-inactive-period.entity';
 import { UserRole, UserStatus } from 'src/users/enums/user-role.enum';
 import { Team } from 'src/teams/entities/team.entity';
 import { TeamMembership } from 'src/teams/entities/team-membership.entity';
 import { TeamRole } from 'src/teams/enums/team-role.enum';
-import { TeamVisibilityService } from 'src/teams/team-visibility.service';
 import { ActCategory } from 'src/activity-categories/entities/activities-category.entity';
 import { Activity } from 'src/activities/entities/activity.entity';
 import { Project } from 'src/projects/entities/project.entity';
 import { ProjectActivity } from 'src/projects/entities/project-activity.entity';
 import { ReportingPeriod } from 'src/reporting/entities/reporting-period.entity';
 import { ReportingPeriodStatus } from 'src/reporting/enums/reporting-period-status.enum';
-import { ReportingService } from 'src/reporting/reporting.service';
 import { TimeLog } from 'src/time-logs/entities/time-log.entity';
 import { TimeLogsService } from 'src/time-logs/time-logs.service';
 import { PlanningEntry } from 'src/planning/entities/planning-entry.entity';
-import { UserCapacity } from 'src/capacity/entities/user-capacity.entity';
-import { CompanyStandardDay } from 'src/capacity/entities/company-standard-day.entity';
-import { CapacityService } from 'src/capacity/capacity.service';
-import { ExpectedHoursService } from 'src/capacity/expected-hours.service';
 import { Notification } from 'src/notifications/entities/notification.entity';
-import { NotificationsService } from 'src/notifications/notifications.service';
 import { NotificationType } from 'src/notifications/enums/notification-type.enum';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 import {
@@ -140,49 +134,9 @@ describe('AbsencesService', () => {
   };
 
   beforeAll(async () => {
-    dataSource = await new DataSource({
-      ...AppDataSource.options,
-      logging: false,
-    }).initialize();
+    dataSource = await openTestDataSource();
 
-    const teamVisibility = new TeamVisibilityService(
-      dataSource.getRepository(TeamMembership),
-      dataSource.getRepository(User),
-    );
-
-    const reporting = new ReportingService(
-      dataSource.getRepository(ReportingPeriod),
-      dataSource.getRepository(Company),
-      teamVisibility,
-    );
-
-    const capacity = new CapacityService(
-      dataSource.getRepository(UserCapacity),
-      dataSource.getRepository(Company),
-      dataSource.getRepository(User),
-      dataSource.getRepository(UserInactivePeriod),
-      dataSource.getRepository(CompanyStandardDay),
-      reporting,
-    );
-
-    service = new AbsencesService(
-      dataSource.getRepository(Absence),
-      reporting,
-      teamVisibility,
-      capacity,
-      new NotificationsService(dataSource.getRepository(Notification)),
-      dataSource,
-    );
-
-    timeLogs = new TimeLogsService(
-      dataSource.getRepository(TimeLog),
-      dataSource.getRepository(ProjectActivity),
-      reporting,
-      teamVisibility,
-      new ExpectedHoursService(dataSource.getRepository(Absence), capacity),
-      capacity,
-      dataSource,
-    );
+    ({ absences: service, timeLogs } = buildServices(dataSource));
 
     const company = await dataSource
       .getRepository(Company)
@@ -284,8 +238,16 @@ describe('AbsencesService', () => {
     await dataSource.destroy();
   });
 
-  /** A 4h plan written straight to the table, as made by `authorId`. */
-  const planBy = (authorId: string, userId: string, date: string) =>
+  /**
+   * A 4h plan written straight to the table, as made by `authorId` and, when
+   * given, last changed by `changedById`.
+   */
+  const planBy = (
+    authorId: string,
+    userId: string,
+    date: string,
+    changedById?: string,
+  ) =>
     dataSource.getRepository(PlanningEntry).save({
       companyId,
       userId,
@@ -293,6 +255,7 @@ describe('AbsencesService', () => {
       date,
       plannedMinutes: 240,
       createdById: authorId,
+      updatedById: changedById,
     });
 
   const noticesFor = (recipientId: string) =>
@@ -347,14 +310,14 @@ describe('AbsencesService', () => {
       ).rejects.toThrow(ForbiddenException);
     });
 
-    it('applies the same scope to update and delete', async () => {
+    it('does not find an absence out of reach to update or delete', async () => {
       const id = await existingAbsence(member.id);
 
       await expect(
         service.update(id, { note: 'changed' }, outsider),
-      ).rejects.toThrow(ForbiddenException);
+      ).rejects.toThrow(NotFoundException);
       await expect(service.delete(id, outsider)).rejects.toThrow(
-        ForbiddenException,
+        NotFoundException,
       );
     });
 
@@ -897,6 +860,15 @@ describe('AbsencesService', () => {
         projects: [{ name: `Project ${RUN}`, minutes: 480 }],
       });
       expect(await noticesFor(member.id)).toEqual([]);
+    });
+
+    it('tells whoever changed a plan last, not its author', async () => {
+      await planBy(owner.id, member.id, START, manager.id);
+
+      await service.create(absenceFor(member.id), member);
+
+      expect(await noticesFor(manager.id)).toHaveLength(1);
+      expect(await noticesFor(owner.id)).toEqual([]);
     });
 
     it('never tells whoever recorded the absence', async () => {

@@ -1,4 +1,9 @@
-import { ValidationError, ValidationPipe } from '@nestjs/common';
+import {
+  ArgumentMetadata,
+  BadRequestException,
+  ValidationError,
+  ValidationPipe,
+} from '@nestjs/common';
 
 import { createValidationException } from './validation-exception.util';
 
@@ -25,11 +30,28 @@ const fieldErrors = (
 };
 
 /**
+ * A body nested deeper than the transformer can walk overflows its stack,
+ * which would otherwise answer 500.
+ */
+class PayloadValidationPipe extends ValidationPipe {
+  async transform(value: unknown, metadata: ArgumentMetadata) {
+    try {
+      return (await super.transform(value, metadata)) as unknown;
+    } catch (error) {
+      if (error instanceof RangeError) {
+        throw new BadRequestException('The request is nested too deeply');
+      }
+      throw error;
+    }
+  }
+}
+
+/**
  * How every payload is checked: the global pipe, and a guard that must check
  * a body before the pipes run (sign-in).
  */
 export const createValidationPipe = () =>
-  new ValidationPipe({
+  new PayloadValidationPipe({
     whitelist: true,
     transform: true,
     forbidNonWhitelisted: true,

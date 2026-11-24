@@ -2,7 +2,7 @@ import 'reflect-metadata';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { DataSource, In } from 'typeorm';
 
-import { AppDataSource } from 'src/data-source';
+import { openTestDataSource } from 'src/lib/testing/data-source';
 import { Company } from 'src/companies/entities/company.entity';
 import { User } from 'src/users/entities/user.entity';
 import { UserRole, UserStatus } from 'src/users/enums/user-role.enum';
@@ -150,11 +150,7 @@ describe('TeamVisibilityService', () => {
     users.map((user) => user.id).sort();
 
   beforeAll(async () => {
-    // Same connection settings as the app, minus the query logging.
-    dataSource = await new DataSource({
-      ...AppDataSource.options,
-      logging: false,
-    }).initialize();
+    dataSource = await openTestDataSource();
 
     service = new TeamVisibilityService(
       dataSource.getRepository(TeamMembership),

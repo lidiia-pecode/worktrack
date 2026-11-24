@@ -32,8 +32,6 @@ const projectsQueries = createEntityQuery<Project, ProjectQueryParams>({
   },
 });
 
-export const useProjectsQuery = projectsQueries.useQuery;
-
 export const useAllProjectsQuery = projectsQueries.useAllPagesQuery;
 
 /** The client names already used on projects, archived ones included. */

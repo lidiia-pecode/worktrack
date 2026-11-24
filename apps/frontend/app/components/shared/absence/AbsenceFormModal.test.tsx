@@ -5,7 +5,8 @@ import { Absence, PlanningEntry } from "@/types";
 import { AbsenceType } from "@/types/enums";
 import { formatAbsenceRange } from "@/lib/utils/absence";
 
-import { AbsenceFormModal, LockedAbsenceModal } from "./AbsenceFormModal";
+import { AbsenceFormModal } from "./AbsenceFormModal";
+import { LockedAbsenceModal } from "./LockedAbsenceModal";
 
 const data = vi.hoisted(() => ({
   plans: [] as PlanningEntry[],

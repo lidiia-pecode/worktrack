@@ -2,6 +2,12 @@ import { ArgumentsHost, Catch, ExceptionFilter, Logger } from '@nestjs/common';
 import { Response } from 'express';
 import { QueryFailedError } from 'typeorm';
 
+/**
+ * Values the validators let through and the database can't store or read: a
+ * null character in text, a date or a number out of its type's range.
+ */
+const INVALID_VALUE_CODES = new Set(['22021', '22007', '22008', '22003']);
+
 @Catch(QueryFailedError)
 export class DatabaseExceptionFilter implements ExceptionFilter {
   private readonly logger = new Logger(DatabaseExceptionFilter.name);
@@ -36,6 +42,14 @@ export class DatabaseExceptionFilter implements ExceptionFilter {
         error: 'Bad Request',
         message:
           'Cannot delete or update resource because it is referenced by another entity',
+      });
+    }
+
+    if (code && INVALID_VALUE_CODES.has(code)) {
+      return response.status(400).json({
+        statusCode: 400,
+        error: 'Bad Request',
+        message: 'Invalid value',
       });
     }
 

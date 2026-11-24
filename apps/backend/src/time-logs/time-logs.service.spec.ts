@@ -7,7 +7,8 @@ import {
 import { plainToInstance } from 'class-transformer';
 import { DataSource, In } from 'typeorm';
 
-import { AppDataSource } from 'src/data-source';
+import { openTestDataSource } from 'src/lib/testing/data-source';
+import { buildServices } from 'src/lib/testing/services';
 import { Company } from 'src/companies/entities/company.entity';
 import { User } from 'src/users/entities/user.entity';
 import { UserInactivePeriod } from 'src/users/entities/user-inactive-period.entity';
@@ -15,7 +16,6 @@ import { UserRole, UserStatus } from 'src/users/enums/user-role.enum';
 import { Team } from 'src/teams/entities/team.entity';
 import { TeamMembership } from 'src/teams/entities/team-membership.entity';
 import { TeamRole } from 'src/teams/enums/team-role.enum';
-import { TeamVisibilityService } from 'src/teams/team-visibility.service';
 import { ActCategory } from 'src/activity-categories/entities/activities-category.entity';
 import { Activity } from 'src/activities/entities/activity.entity';
 import { Project } from 'src/projects/entities/project.entity';
@@ -23,12 +23,6 @@ import { ProjectStatus } from 'src/projects/enums/project-status.enum';
 import { ProjectActivity } from 'src/projects/entities/project-activity.entity';
 import { ReportingPeriod } from 'src/reporting/entities/reporting-period.entity';
 import { ReportingPeriodStatus } from 'src/reporting/enums/reporting-period-status.enum';
-import { ReportingService } from 'src/reporting/reporting.service';
-import { Absence } from 'src/absences/entities/absence.entity';
-import { UserCapacity } from 'src/capacity/entities/user-capacity.entity';
-import { CompanyStandardDay } from 'src/capacity/entities/company-standard-day.entity';
-import { CapacityService } from 'src/capacity/capacity.service';
-import { ExpectedHoursService } from 'src/capacity/expected-hours.service';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 import {
   freezeAtFirstLockedSecond,
@@ -115,40 +109,9 @@ describe('TimeLogsService write scope', () => {
   };
 
   beforeAll(async () => {
-    dataSource = await new DataSource({
-      ...AppDataSource.options,
-      logging: false,
-    }).initialize();
+    dataSource = await openTestDataSource();
 
-    const teamVisibility = new TeamVisibilityService(
-      dataSource.getRepository(TeamMembership),
-      dataSource.getRepository(User),
-    );
-
-    const reporting = new ReportingService(
-      dataSource.getRepository(ReportingPeriod),
-      dataSource.getRepository(Company),
-      teamVisibility,
-    );
-
-    const capacity = new CapacityService(
-      dataSource.getRepository(UserCapacity),
-      dataSource.getRepository(Company),
-      dataSource.getRepository(User),
-      dataSource.getRepository(UserInactivePeriod),
-      dataSource.getRepository(CompanyStandardDay),
-      reporting,
-    );
-
-    service = new TimeLogsService(
-      dataSource.getRepository(TimeLog),
-      dataSource.getRepository(ProjectActivity),
-      reporting,
-      teamVisibility,
-      new ExpectedHoursService(dataSource.getRepository(Absence), capacity),
-      capacity,
-      dataSource,
-    );
+    ({ timeLogs: service } = buildServices(dataSource));
 
     const company = await dataSource
       .getRepository(Company)
@@ -302,7 +265,7 @@ describe('TimeLogsService write scope', () => {
     it('checks project membership against the entry owner, not the caller', async () => {
       await expect(
         service.create(logFor(unassigned.id), manager),
-      ).rejects.toThrow(ForbiddenException);
+      ).rejects.toThrow(BadRequestException);
     });
 
     it('counts the daily limit against the entry owner', async () => {
@@ -452,12 +415,12 @@ describe('TimeLogsService write scope', () => {
       ).resolves.toMatchObject({ minutes: 90 });
     });
 
-    it('refuses a manager for an entry outside their teams', async () => {
+    it("does not find an entry outside a manager's teams", async () => {
       const id = await existingLogFor(outsider.id);
 
       await expect(
         service.update(id, { minutes: 90 }, manager),
-      ).rejects.toThrow(ForbiddenException);
+      ).rejects.toThrow(NotFoundException);
     });
 
     it("corrects a deactivated person's entry from before they left", async () => {
@@ -475,12 +438,12 @@ describe('TimeLogsService write scope', () => {
       });
     });
 
-    it("refuses an employee for someone else's entry", async () => {
+    it("does not find someone else's entry for an employee", async () => {
       const id = await existingLogFor(member.id);
 
       await expect(
         service.update(id, { minutes: 90 }, outsider),
-      ).rejects.toThrow(ForbiddenException);
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('lets a manager delete an entry in a team they lead', async () => {
@@ -491,11 +454,11 @@ describe('TimeLogsService write scope', () => {
       });
     });
 
-    it("refuses a delete outside the caller's scope", async () => {
+    it("does not find an entry to delete outside the caller's scope", async () => {
       const id = await existingLogFor(outsider.id);
 
       await expect(service.delete(id, manager)).rejects.toThrow(
-        ForbiddenException,
+        NotFoundException,
       );
     });
 
@@ -542,7 +505,7 @@ describe('TimeLogsService write scope', () => {
 
       await expect(
         service.update(id, { projectActivityId: elsewherePair.id }, owner),
-      ).rejects.toThrow(ForbiddenException);
+      ).rejects.toThrow(BadRequestException);
     });
 
     it('clears a note', async () => {
@@ -1149,14 +1112,14 @@ describe('TimeLogsService write scope', () => {
       ]);
     });
 
-    it("refuses moving an entry into the other team's days, and changing one there", async () => {
+    it("refuses moving an entry into the other team's days, and does not find one there", async () => {
       const id = await existingLogFor(mover.id, LAST_DAY_IN_ALPHA);
 
       await expect(
         service.update(id, { date: MOVE_DAY }, manager),
       ).rejects.toThrow(ForbiddenException);
       await expect(service.delete(id, betaManager)).rejects.toThrow(
-        ForbiddenException,
+        NotFoundException,
       );
       await expect(
         service.update(id, { date: MOVE_DAY }, owner),

@@ -8,7 +8,8 @@ import {
 } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 
-import { AppDataSource } from 'src/data-source';
+import { openTestDataSource } from 'src/lib/testing/data-source';
+import { buildServices } from 'src/lib/testing/services';
 import { waitUntilBlockedBy } from 'src/lib/testing/locks';
 import { PaginationQuery } from 'src/lib/dtos/pagination-query.dto';
 import { Company } from 'src/companies/entities/company.entity';
@@ -20,12 +21,8 @@ import { ActCategory } from 'src/activity-categories/entities/activities-categor
 import { Team } from 'src/teams/entities/team.entity';
 import { TeamMembership } from 'src/teams/entities/team-membership.entity';
 import { TeamRole } from 'src/teams/enums/team-role.enum';
-import { TeamVisibilityService } from 'src/teams/team-visibility.service';
 import { User } from 'src/users/entities/user.entity';
 import { UserRole, UserStatus } from 'src/users/enums/user-role.enum';
-import { UsersService } from 'src/users/users.service';
-import { CapacityService } from 'src/capacity/capacity.service';
-import { ReportingService } from 'src/reporting/reporting.service';
 import { PlanningService } from 'src/planning/planning.service';
 import { PlanningEntry } from 'src/planning/entities/planning-entry.entity';
 import { TimeLog } from 'src/time-logs/entities/time-log.entity';
@@ -153,15 +150,9 @@ describe('ProjectsService membership scope', () => {
     users.map((user) => user.id).sort();
 
   beforeAll(async () => {
-    dataSource = await new DataSource({
-      ...AppDataSource.options,
-      logging: false,
-    }).initialize();
+    dataSource = await openTestDataSource();
 
-    const teamVisibility = new TeamVisibilityService(
-      dataSource.getRepository(TeamMembership),
-      dataSource.getRepository(User),
-    );
+    const { teamVisibility, users } = buildServices(dataSource);
 
     activities = new ActivitiesService(
       dataSource.getRepository(Activity),
@@ -178,13 +169,7 @@ describe('ProjectsService membership scope', () => {
       dataSource.getRepository(ProjectActivity),
       dataSource.getRepository(User),
       activities,
-      new UsersService(
-        dataSource.getRepository(User),
-        teamVisibility,
-        dataSource,
-        stub<CapacityService>({}),
-        stub<ReportingService>({}),
-      ),
+      users,
       teamVisibility,
       stub<PlanningService>({ deletePlansFromToday }),
       dataSource,

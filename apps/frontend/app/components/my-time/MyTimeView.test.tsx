@@ -68,6 +68,7 @@ vi.mock("@/hooks/useAbsences", () => ({
 const myRow: PeopleReportRow = {
   userId: ME,
   name: "Emma Carter",
+  email: "emma.carter@example.test",
   position: "Developer",
   status: UserStatus.ACTIVE,
   lastWorkingDay: null,

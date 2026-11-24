@@ -1,7 +1,6 @@
 import {
   BadRequestException,
   ConflictException,
-  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -16,14 +15,14 @@ import {
 
 import { TimeLog } from './entities/time-log.entity';
 import { ProjectActivity } from 'src/projects/entities/project-activity.entity';
-import { User } from 'src/users/entities/user.entity';
 import {
   TeamVisibilityService,
   VisibleUser,
 } from 'src/teams/team-visibility.service';
 import { ProjectStatus } from 'src/projects/enums/project-status.enum';
 import { ActivityStatus } from 'src/activities/enums/activity-status.enum';
-import { ReportingService } from 'src/reporting/reporting.service';
+import { lockUser } from 'src/users/lock-user.util';
+import { PeriodLocksService } from 'src/reporting/period-locks.service';
 import { assertDateRange, MAX_RANGE_DAYS } from 'src/reporting/date-range.util';
 import {
   TimeLogPayload,
@@ -108,7 +107,7 @@ export class TimeLogsService {
     private readonly repo: Repository<TimeLog>,
     @InjectRepository(ProjectActivity)
     private readonly projectActivityRepo: Repository<ProjectActivity>,
-    private readonly reportingService: ReportingService,
+    private readonly periodLocks: PeriodLocksService,
     private readonly teamVisibility: TeamVisibilityService,
     private readonly expectedHours: ExpectedHoursService,
     private readonly capacity: CapacityService,
@@ -341,7 +340,7 @@ export class TimeLogsService {
     await this.assertCanWriteFor(ownerId, user, payload.date);
 
     return this.dataSource.transaction(async (manager) => {
-      await this.lockUser(manager, ownerId, user.companyId);
+      await lockUser(manager, ownerId, user.companyId);
       await this.assertDateNotLocked(manager, user.companyId, payload.date);
       await this.assertNotFuture(manager, user.companyId, payload.date);
       await this.capacity.assertEmployedOn(
@@ -402,7 +401,7 @@ export class TimeLogsService {
     const ownerId = await this.resolveWritableOwner(id, user, payload.date);
 
     return this.dataSource.transaction(async (manager) => {
-      await this.lockUser(manager, ownerId, user.companyId);
+      await lockUser(manager, ownerId, user.companyId);
 
       const log = await this.getLogForUpdate(id, user.companyId, manager);
 
@@ -465,7 +464,7 @@ export class TimeLogsService {
     const ownerId = await this.resolveWritableOwner(id, user);
 
     await this.dataSource.transaction(async (manager) => {
-      await this.lockUser(manager, ownerId, user.companyId);
+      await lockUser(manager, ownerId, user.companyId);
       const log = await this.getLogForUpdate(id, user.companyId, manager);
 
       // Reporting Period Check
@@ -585,16 +584,13 @@ export class TimeLogsService {
     companyId: string,
     date: string,
   ): Promise<void> {
-    const isLocked = await this.reportingService.isDateLocked(
+    await this.periodLocks.assertRangeOpen(
+      manager,
       companyId,
       date,
-      manager,
+      date,
+      "time can't be logged or changed there",
     );
-    if (isLocked) {
-      throw new ForbiddenException(
-        `Cannot modify time logs for date ${date} because it belongs to a locked reporting period.`,
-      );
-    }
   }
 
   /**
@@ -625,12 +621,9 @@ export class TimeLogsService {
     user: AuthUser,
     newDate?: string,
   ): Promise<string> {
-    const log = await this.repo.findOne({
-      where: { id, companyId: user.companyId },
-      select: ['id', 'userId', 'date'],
-    });
-
-    if (!log) throw new NotFoundException('TimeLog not found');
+    // Read as the caller reads it, so an entry out of their reach is not
+    // found rather than refused, and its id tells nothing.
+    const log = await this.getById(id, user);
 
     await this.assertCanWriteFor(log.userId, user, log.date);
     if (newDate && newDate !== log.date) {
@@ -727,31 +720,12 @@ export class TimeLogsService {
       .getExists();
 
     if (!isMember) {
-      throw new ForbiddenException(
+      throw new BadRequestException(
         ownerId === user.id
           ? 'You can only log time against projects you are assigned to'
           : 'That user is not assigned to this project',
       );
     }
-  }
-
-  /**
-   * Serializes writes per user by locking the user row, so concurrent
-   * create/update operations cannot race the daily-total computation.
-   */
-  private async lockUser(
-    manager: EntityManager,
-    userId: string,
-    companyId: string,
-  ): Promise<void> {
-    const user = await manager
-      .createQueryBuilder(User, 'u')
-      .setLock('pessimistic_write')
-      .where('u.id = :userId', { userId })
-      .andWhere('u.company_id = :companyId', { companyId })
-      .getOne();
-
-    if (!user) throw new NotFoundException('User not found');
   }
 
   /**

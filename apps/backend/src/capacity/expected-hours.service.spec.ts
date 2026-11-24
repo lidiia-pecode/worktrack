@@ -3,7 +3,8 @@ import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { BadRequestException } from '@nestjs/common';
 import { DataSource, In } from 'typeorm';
 
-import { AppDataSource } from 'src/data-source';
+import { openTestDataSource } from 'src/lib/testing/data-source';
+import { buildServices } from 'src/lib/testing/services';
 import { Company } from 'src/companies/entities/company.entity';
 import { User } from 'src/users/entities/user.entity';
 import { UserInactivePeriod } from 'src/users/entities/user-inactive-period.entity';
@@ -11,16 +12,11 @@ import { UserRole, UserStatus } from 'src/users/enums/user-role.enum';
 import { Absence } from 'src/absences/entities/absence.entity';
 import { AbsenceType } from 'src/absences/enums/absence-type.enum';
 
-import { TeamMembership } from 'src/teams/entities/team-membership.entity';
-import { TeamVisibilityService } from 'src/teams/team-visibility.service';
 import { ReportingPeriod } from 'src/reporting/entities/reporting-period.entity';
 import { ReportingPeriodStatus } from 'src/reporting/enums/reporting-period-status.enum';
-import { ReportingService } from 'src/reporting/reporting.service';
 import { monthsBetween } from 'src/reporting/reporting-months.util';
 import { Project } from 'src/projects/entities/project.entity';
-import { ProjectActivity } from 'src/projects/entities/project-activity.entity';
 import { PlanningEntry } from 'src/planning/entities/planning-entry.entity';
-import { TimeLog } from 'src/time-logs/entities/time-log.entity';
 import { TimeLogsService } from 'src/time-logs/time-logs.service';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 import {
@@ -115,45 +111,13 @@ describe('ExpectedHoursService', () => {
     (await service.expectedForUser(companyId, userId, from, to)).total;
 
   beforeAll(async () => {
-    dataSource = await new DataSource({
-      ...AppDataSource.options,
-      logging: false,
-    }).initialize();
+    dataSource = await openTestDataSource();
 
-    const teamVisibility = new TeamVisibilityService(
-      dataSource.getRepository(TeamMembership),
-      dataSource.getRepository(User),
-    );
-
-    const reporting = new ReportingService(
-      dataSource.getRepository(ReportingPeriod),
-      dataSource.getRepository(Company),
-      teamVisibility,
-    );
-
-    capacity = new CapacityService(
-      dataSource.getRepository(UserCapacity),
-      dataSource.getRepository(Company),
-      dataSource.getRepository(User),
-      dataSource.getRepository(UserInactivePeriod),
-      dataSource.getRepository(CompanyStandardDay),
-      reporting,
-    );
-
-    service = new ExpectedHoursService(
-      dataSource.getRepository(Absence),
+    ({
       capacity,
-    );
-
-    timeLogs = new TimeLogsService(
-      dataSource.getRepository(TimeLog),
-      dataSource.getRepository(ProjectActivity),
-      reporting,
-      teamVisibility,
-      service,
-      capacity,
-      dataSource,
-    );
+      expectedHours: service,
+      timeLogs,
+    } = buildServices(dataSource));
 
     const company = await dataSource.getRepository(Company).save({
       companyName: SLUG,

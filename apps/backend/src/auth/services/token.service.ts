@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 import { JwtService as NestJwtService } from '@nestjs/jwt';
-import { createHmac } from 'node:crypto';
+import { createHmac, randomUUID } from 'node:crypto';
 import type { StringValue } from 'ms';
 import { JwtAccessPayload, JwtRefreshPayload } from '../auth-strategies/types';
 
@@ -28,6 +28,8 @@ export class TokenService {
       expiresIn: this.configService.getOrThrow<StringValue>(
         'auth.refreshToken.expiresIn',
       ),
+      // Unique, so two refreshes in the same second give different tokens.
+      jwtid: randomUUID(),
     });
   }
 

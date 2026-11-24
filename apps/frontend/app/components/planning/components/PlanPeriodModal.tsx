@@ -120,8 +120,7 @@ export const PlanPeriodModal = ({
     setValue,
     formState: { errors, isDirty },
   } = useForm<PeriodFormData>({
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    resolver: zodResolver(periodSchema) as any,
+    resolver: zodResolver(periodSchema),
     defaultValues: {
       startDate: openingRange.dateFrom,
       endDate: openingRange.dateTo,

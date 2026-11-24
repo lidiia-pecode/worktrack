@@ -10,7 +10,7 @@ import {
 import {
   ABSENCE_TYPE_LABELS,
   formatAbsenceRange,
-  isPartDayAbsence,
+  isWholeDayAbsence,
 } from "@/lib/utils/absence";
 
 import { DayShare, problemSummary } from "./period-lines";
@@ -59,6 +59,32 @@ type PeriodPreviewProps = {
 };
 
 /**
+ * Why a period holds no day to plan. The preview tells the days in another
+ * team apart; a day before the person joined and one while they were
+ * deactivated look the same to it, so the last answer names every cause.
+ */
+export const noDaysReason = ({
+  firstName,
+  weekdays,
+  awayDays,
+  inAnotherTeam,
+}: {
+  firstName: string;
+  weekdays: number;
+  awayDays: number;
+  inAnotherTeam: number;
+}) => {
+  if (weekdays === 0) return "It holds only weekends. Choose another period.";
+  if (awayDays >= weekdays) {
+    return `${firstName} is away on every weekday. Choose another period, or change the absence: it opens from its days in the week view.`;
+  }
+  if (inAnotherTeam >= weekdays) {
+    return `${firstName}'s working days in this period are in another team, whose manager or the owner plans them.`;
+  }
+  return `Nothing can be planned for ${firstName} in this period: on each of its days they're away, in another team, or weren't working here. Choose another period.`;
+};
+
+/**
  * What saving would do, before it is saved: the fullest day, each change, the
  * absences skipped and anything that does not fit.
  */
@@ -80,9 +106,7 @@ export const PeriodPreview = ({
   const inAnotherTeam = (preview?.daysInAnotherTeam ?? []).length;
   const weekdays = countWeekdays(startDate, endDate);
   // Part of a day is planned around, so only whole days are skipped.
-  const wholeAbsences = absences.filter(
-    (absence) => !isPartDayAbsence(absence),
-  );
+  const wholeAbsences = absences.filter(isWholeDayAbsence);
   const awayDays = wholeAbsences.reduce(
     (total, absence) => total + awayWeekdays(absence, startDate, endDate),
     0,
@@ -113,11 +137,7 @@ export const PeriodPreview = ({
             No working days to plan in this period.
           </p>
           <p className="text-muted-foreground">
-            {awayDays >= weekdays && weekdays > 0
-              ? `${firstName} is away on every weekday. Choose another period, or change the absence: it opens from its days in the week view.`
-              : weekdays === 0
-                ? "It holds only weekends. Choose another period."
-                : `${firstName}'s account did not exist yet. Choose a later period.`}
+            {noDaysReason({ firstName, weekdays, awayDays, inAnotherTeam })}
           </p>
         </div>
       )}

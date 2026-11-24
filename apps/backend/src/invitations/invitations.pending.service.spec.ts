@@ -6,18 +6,15 @@ import {
 } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 
-import { AppDataSource } from 'src/data-source';
+import { openTestDataSource } from 'src/lib/testing/data-source';
+import { buildServices } from 'src/lib/testing/services';
 import { waitUntilBlockedBy } from 'src/lib/testing/locks';
 import { Company } from 'src/companies/entities/company.entity';
 import { Team } from 'src/teams/entities/team.entity';
 import { TeamMembership } from 'src/teams/entities/team-membership.entity';
 import { TeamRole } from 'src/teams/enums/team-role.enum';
-import { TeamVisibilityService } from 'src/teams/team-visibility.service';
 import { User } from 'src/users/entities/user.entity';
 import { UserRole } from 'src/users/enums/user-role.enum';
-import { UsersService } from 'src/users/users.service';
-import { CapacityService } from 'src/capacity/capacity.service';
-import { ReportingService } from 'src/reporting/reporting.service';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 import type { InvitationEmailParams } from 'src/mail/templates/invitation.template';
 
@@ -129,32 +126,20 @@ describe('InvitationsService pending invitations', () => {
     );
 
   beforeAll(async () => {
-    dataSource = await new DataSource({
-      ...AppDataSource.options,
-      logging: false,
-    }).initialize();
+    dataSource = await openTestDataSource();
 
     const company = await dataSource
       .getRepository(Company)
       .save({ companyName: SLUG, slug: SLUG });
     companyId = company.id;
 
-    const teamVisibility = new TeamVisibilityService(
-      dataSource.getRepository(TeamMembership),
-      dataSource.getRepository(User),
-    );
+    const { teamVisibility, users } = buildServices(dataSource);
 
     sendInvitationEmail = jest.fn().mockResolvedValue(undefined);
 
     service = new InvitationsService(
       dataSource.getRepository(Invitation),
-      new UsersService(
-        dataSource.getRepository(User),
-        teamVisibility,
-        dataSource,
-        stub<CapacityService>({}),
-        stub<ReportingService>({}),
-      ),
+      users,
       stub({ sendInvitationEmail }),
       stub({}),
       stub({}),

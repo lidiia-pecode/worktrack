@@ -3,15 +3,11 @@ import { UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { DataSource } from 'typeorm';
 
-import { AppDataSource } from 'src/data-source';
+import { openTestDataSource } from 'src/lib/testing/data-source';
+import { buildServices } from 'src/lib/testing/services';
 import { Company } from 'src/companies/entities/company.entity';
-import { TeamMembership } from 'src/teams/entities/team-membership.entity';
-import { TeamVisibilityService } from 'src/teams/team-visibility.service';
 import { User } from 'src/users/entities/user.entity';
 import { UserRole, UserStatus } from 'src/users/enums/user-role.enum';
-import { UsersService } from 'src/users/users.service';
-import { CapacityService } from 'src/capacity/capacity.service';
-import { ReportingService } from 'src/reporting/reporting.service';
 import { hashPassword } from 'src/lib/utils/hash-password.util';
 import { waitUntilBlockedBy } from 'src/lib/testing/locks';
 
@@ -105,10 +101,7 @@ describe('AuthService refresh', () => {
     service.refreshAccessToken(token, authFor(sessionId));
 
   beforeAll(async () => {
-    dataSource = await new DataSource({
-      ...AppDataSource.options,
-      logging: false,
-    }).initialize();
+    dataSource = await openTestDataSource();
 
     const company = await dataSource
       .getRepository(Company)
@@ -128,17 +121,7 @@ describe('AuthService refresh', () => {
     user = { id: saved.id, email, companyId, role: UserRole.OWNER };
 
     const config = stub<never>({ getOrThrow: (key: string) => CONFIG[key] });
-    const teamVisibility = new TeamVisibilityService(
-      dataSource.getRepository(TeamMembership),
-      dataSource.getRepository(User),
-    );
-    const usersService = new UsersService(
-      dataSource.getRepository(User),
-      teamVisibility,
-      dataSource,
-      stub<CapacityService>({}),
-      stub<ReportingService>({}),
-    );
+    const { users: usersService } = buildServices(dataSource);
 
     jwt = new JwtService();
     tokenService = new TokenService(jwt, config);

@@ -38,6 +38,7 @@ import {
 } from "@/lib/utils/reporting-period";
 import { groupTimelogsByDate } from "@/lib/utils/timelog";
 import { cn } from "@/lib/utils/cn";
+import { combineQueryStates } from "@/lib/utils/query-states";
 
 import { EmptyState } from "../shared/EmptyState";
 import { projects } from "../layout/sidebar/sidebar-navigation";
@@ -50,16 +51,14 @@ import { BackToThisWeekButton, WeekNav } from "../shared/week/WeekNav";
 import { WeekHeaderDay } from "../shared/week/WeekHeaderDay";
 import { NonWorkDayConfirm } from "../shared/week/NonWorkDayConfirm";
 import { Button, buttonVariants } from "@/components/ui/button";
-import {
-  AbsenceFormModal,
-  LockedAbsenceModal,
-} from "./components/AbsenceFormModal";
+import { AbsenceFormModal } from "../shared/absence/AbsenceFormModal";
+import { LockedAbsenceModal } from "../shared/absence/LockedAbsenceModal";
 import { DayColumn } from "./components/DayColumn";
 import { WeekDayList } from "./components/WeekDayList";
 import { dayDrawingHeight, partAbsenceHeight } from "./helpers/build-segments";
 import { TimesheetDay } from "./helpers/day-state";
-import { TimeLogFormModal } from "./components/TimeLogFormModal";
-import { lastEntryChoiceKey } from "./helpers/last-entry-choice";
+import { TimeLogFormModal } from "../shared/time-entry/TimeLogFormModal";
+import { lastEntryChoiceKey } from "../shared/time-entry/last-entry-choice";
 import { WeekSummary } from "./components/WeekSummary";
 import { showsWeekFigures, timesheetContentFor } from "./helpers/first-run";
 
@@ -95,13 +94,8 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
   const { user: viewer } = useAuth();
   const addsOwnProjects =
     viewer?.role === UserRole.OWNER || viewer?.role === UserRole.MANAGER;
-  const {
-    dailyTargetMinutes,
-    timezone,
-    isLoading: isLoadingSettings,
-    isError: isSettingsError,
-    refetch: refetchSettings,
-  } = useWorkSettings();
+  const settings = useWorkSettings();
+  const { dailyTargetMinutes, timezone } = settings;
 
   const { weekStart, showWeekOf } = useShownWeek();
   const [modalState, setModalState] = useState<ModalState | null>(null);
@@ -116,62 +110,37 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
   const dateTo = toISODate(getWeekEnd(weekStart));
   const todayIso = todayISODate(timezone);
 
+  const logs = useTimelogs({
+    userId,
+    dateFrom,
+    dateTo,
+  });
   const {
     items: timelogs,
     actions,
-    isLoading: isLoadingLogs,
-    isError: isLogsError,
     isPlaceholderData: isShowingPreviousWeek,
-    refetch: refetchLogs,
-  } = useTimelogs({
+  } = logs;
+
+  const absenceList = useAbsences({
     userId,
     dateFrom,
     dateTo,
   });
+  const { items: absences, actions: absenceActions } = absenceList;
 
-  const {
-    items: absences,
-    actions: absenceActions,
-    isLoading: isLoadingAbsences,
-    isError: isAbsencesError,
-    refetch: refetchAbsences,
-  } = useAbsences({
-    userId,
-    dateFrom,
-    dateTo,
-  });
+  const picker = useAssignableActivities();
+  const { items: pickerItems } = picker;
 
-  const {
-    items: pickerItems,
-    isLoading: isLoadingPicker,
-    isError: isPickerError,
-    refetch: refetchPicker,
-  } = useAssignableActivities();
+  const ownProjectList = useOwnProjects();
+  const { data: ownProjects } = ownProjectList;
 
-  const {
-    data: ownProjects,
-    isLoading: isLoadingOwnProjects,
-    isError: isOwnProjectsError,
-    refetch: refetchOwnProjects,
-  } = useOwnProjects();
-
-  const {
-    expectedMinutes,
-    expectedByDate,
-    isLoading: isLoadingExpected,
-    isError: isExpectedError,
-    refetch: refetchExpected,
-  } = useExpectedHours({ dateFrom, dateTo });
+  const expected = useExpectedHours({ dateFrom, dateTo });
+  const { expectedMinutes, expectedByDate } = expected;
 
   // An absence is frozen whole once any of its days locks, so its months count.
   const lockRange = lockLookupRange(dateFrom, dateTo, absences, todayIso);
-  const {
-    isLocked,
-    isEditable,
-    isLoading: isLoadingLocks,
-    isError: isLocksError,
-    refetch: refetchLocks,
-  } = useLockedDates(lockRange.dateFrom, lockRange.dateTo);
+  const locks = useLockedDates(lockRange.dateFrom, lockRange.dateTo);
+  const { isLocked, isEditable } = locks;
 
   const {
     items: plannedEntries,
@@ -348,25 +317,21 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
 
   const closeModal = () => setModalState(null);
 
+  const required = combineQueryStates([
+    logs,
+    picker,
+    settings,
+    absenceList,
+    expected,
+    ownProjectList,
+    // The locks too, so a day never shows without its "+" and then gains it.
+    locks,
+  ]);
+  const { hasError } = required;
   const retry = () => {
     void refetchPlans();
-    void refetchLogs();
-    void refetchPicker();
-    void refetchSettings();
-    void refetchAbsences();
-    void refetchExpected();
-    void refetchOwnProjects();
-    void refetchLocks();
+    required.retry();
   };
-
-  const hasError =
-    isLogsError ||
-    isPickerError ||
-    isSettingsError ||
-    isAbsencesError ||
-    isExpectedError ||
-    isOwnProjectsError ||
-    isLocksError;
 
   const content = timesheetContentFor({
     loggableActivities: pickerItems.length,
@@ -435,16 +400,7 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
       />
     ));
 
-  if (
-    isLoadingSettings ||
-    isLoadingLogs ||
-    isLoadingPicker ||
-    isLoadingAbsences ||
-    isLoadingExpected ||
-    isLoadingOwnProjects ||
-    // The locks too, so a day never shows without its "+" and then gains it.
-    isLoadingLocks
-  ) {
+  if (required.isLoading) {
     return (
       <>
         {header}
@@ -637,6 +593,7 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
           isSaving={actions.create.isPending || actions.update.isPending}
           isDeleting={actions.delete.isPending}
           onAddAbsence={() => openDayAbsence(modalState.date)}
+          hasAbsence={!!absencesByDate[modalState.date]}
         />
       )}
     </>

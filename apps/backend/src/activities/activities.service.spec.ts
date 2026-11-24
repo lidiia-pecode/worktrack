@@ -2,7 +2,7 @@ import 'reflect-metadata';
 import { BadRequestException, ConflictException } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 
-import { AppDataSource } from 'src/data-source';
+import { openTestDataSource } from 'src/lib/testing/data-source';
 import { Company } from 'src/companies/entities/company.entity';
 import { ActCategory } from 'src/activity-categories/entities/activities-category.entity';
 import { ActCategoriesService } from 'src/activity-categories/activity-categories.service';
@@ -64,10 +64,7 @@ describe('Activity and category names', () => {
   });
 
   beforeAll(async () => {
-    dataSource = await new DataSource({
-      ...AppDataSource.options,
-      logging: false,
-    }).initialize();
+    dataSource = await openTestDataSource();
 
     categories = new ActCategoriesService(
       dataSource.getRepository(ActCategory),

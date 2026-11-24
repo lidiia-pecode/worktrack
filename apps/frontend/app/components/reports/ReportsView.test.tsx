@@ -135,6 +135,7 @@ const person = (
   return {
     userId: name.toLowerCase().replace(" ", "-"),
     name,
+    email: `${name.toLowerCase().replace(" ", ".")}@example.test`,
     position: "Developer",
     status: UserStatus.ACTIVE,
     lastWorkingDay: null,

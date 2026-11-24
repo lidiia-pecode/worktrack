@@ -29,7 +29,7 @@ import { EmptyState } from "../shared/EmptyState";
 import { GraceMonthNote } from "../shared/GraceMonthNote";
 import { FormSelect } from "../shared/FormSelect";
 import { useOpenedEntry } from "../shared/useOpenedEntry";
-import { PERSON_PARAM } from "../team/team-links";
+import { PERSON_PARAM } from "../shared/team-links";
 import { ErrorState } from "../shared/ErrorState";
 import { LoadingState } from "../shared/LoadingState";
 import { HoursExportButton } from "./components/HoursExportButton";

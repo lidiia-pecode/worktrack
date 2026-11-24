@@ -5,8 +5,6 @@ import {
   Get,
   HttpCode,
   HttpStatus,
-  Param,
-  ParseUUIDPipe,
   Post,
   Query,
 } from '@nestjs/common';
@@ -61,15 +59,6 @@ export class PlanningController {
     @CurrentUser() user: AuthUser,
   ) {
     return this.service.countRemovable(query, user);
-  }
-
-  @Get(':id')
-  @Serialize(PlanningEntryResponse)
-  getById(
-    @Param('id', ParseUUIDPipe) id: string,
-    @CurrentUser() user: AuthUser,
-  ) {
-    return this.service.getById(id, user);
   }
 
   @Role(UserRole.MANAGER, UserRole.OWNER)

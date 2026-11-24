@@ -1,14 +1,15 @@
 import { PaginatedResponse, PaginationParams } from ".";
 import { Activity } from "./Activities";
 import { Company } from "./Company";
+import { ProjectStatus } from "./enums";
 
-// simplified back responce ProjectActivityResponse
+/** A project as the API sends it inside a project's activity. */
 export interface ProjectSummary {
   id: string;
   name: string;
   /** Null or empty for an internal project. */
   clientName: string | null;
-  status: string;
+  status: ProjectStatus;
 }
 
 export interface ProjectActivity {
@@ -23,14 +24,6 @@ export interface ProjectActivity {
   project?: ProjectSummary;
   activity?: Activity;
 }
-
-export interface ProjectActivityPayload {
-  activityId: string;
-}
-
-export type UpdateProjectActivityPayload = {
-  isActive?: boolean;
-};
 
 export type ProjectActivityListResponse = PaginatedResponse<ProjectActivity>;
 

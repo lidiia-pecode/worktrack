@@ -9,6 +9,7 @@ import {
   ABSENCE_TYPE_SHORT_LABELS,
   formatAbsenceRange,
   isPartDayAbsence,
+  isWholeDayAbsence,
 } from "@/lib/utils/absence";
 import { CLOSED_DAY_TEXT, closedSpellOn, fullName } from "@/lib/utils/user";
 import { cn } from "@/lib/utils/cn";
@@ -17,7 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { TooltipTrigger, type TooltipHandle } from "@/components/ui/tooltip";
 
 import { EntryChip } from "../../shared/week/EntryChip";
-import { ABSENCE_PATTERN } from "../../timesheet/consts";
+import { ABSENCE_PATTERN } from "../../shared/week/day-styles";
 import { describePlanDay, planBars } from "../plan-bars";
 import { PlanningPersonCell } from "./PlanningPersonCell";
 import { PlanningTotalCell } from "./PlanningTotalCell";
@@ -187,9 +188,7 @@ export const PlanningWeekRow = ({
             dates.map((date) => {
               const absence = absencesByDate[date];
               // Part of a day opens from its striped day instead.
-              return absence && !isPartDayAbsence(absence)
-                ? absence
-                : undefined;
+              return isWholeDayAbsence(absence) ? absence : undefined;
             }),
           ).map((run) => (
             <button

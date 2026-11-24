@@ -2,7 +2,7 @@ import 'reflect-metadata';
 import { plainToInstance } from 'class-transformer';
 import { DataSource } from 'typeorm';
 
-import { AppDataSource } from 'src/data-source';
+import { openTestDataSource } from 'src/lib/testing/data-source';
 import { waitUntilBlockedBy } from 'src/lib/testing/locks';
 
 import { CompaniesService } from './companies.service';
@@ -19,10 +19,7 @@ describe('CompaniesService update', () => {
   let companyId: string;
 
   beforeAll(async () => {
-    dataSource = await new DataSource({
-      ...AppDataSource.options,
-      logging: false,
-    }).initialize();
+    dataSource = await openTestDataSource();
 
     service = new CompaniesService(dataSource.getRepository(Company));
 
@@ -75,10 +72,7 @@ describe('CompaniesService.retryOnTakenSlug', () => {
   let service: CompaniesService;
 
   beforeAll(async () => {
-    dataSource = await new DataSource({
-      ...AppDataSource.options,
-      logging: false,
-    }).initialize();
+    dataSource = await openTestDataSource();
 
     service = new CompaniesService(dataSource.getRepository(Company));
   });

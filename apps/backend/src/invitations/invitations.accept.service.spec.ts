@@ -3,7 +3,8 @@ import { createHash, randomBytes } from 'crypto';
 import { NotFoundException } from '@nestjs/common';
 import { DataSource, IsNull } from 'typeorm';
 
-import { AppDataSource } from 'src/data-source';
+import { openTestDataSource } from 'src/lib/testing/data-source';
+import { buildServices } from 'src/lib/testing/services';
 import { todayISODate } from 'src/capacity/working-days.util';
 import { timeZoneOnAnotherDay } from 'src/lib/testing/time-zones';
 import { waitUntilBlockedBy } from 'src/lib/testing/locks';
@@ -15,9 +16,6 @@ import { TeamStatus } from 'src/teams/enums/team-status.enum';
 import { TeamVisibilityService } from 'src/teams/team-visibility.service';
 import { User } from 'src/users/entities/user.entity';
 import { UserRole, UserStatus } from 'src/users/enums/user-role.enum';
-import { UsersService } from 'src/users/users.service';
-import { CapacityService } from 'src/capacity/capacity.service';
-import { ReportingService } from 'src/reporting/reporting.service';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 
 import { Invitation } from './entities/invitation.entity';
@@ -130,30 +128,19 @@ describe('InvitationsService acceptance', () => {
   };
 
   beforeAll(async () => {
-    dataSource = await new DataSource({
-      ...AppDataSource.options,
-      logging: false,
-    }).initialize();
+    dataSource = await openTestDataSource();
 
     const company = await dataSource
       .getRepository(Company)
       .save({ companyName: SLUG, slug: SLUG, timezone: TIME_ZONE });
     companyId = company.id;
 
-    teamVisibility = new TeamVisibilityService(
-      dataSource.getRepository(TeamMembership),
-      dataSource.getRepository(User),
-    );
+    const { users, ...services } = buildServices(dataSource);
+    ({ teamVisibility } = services);
 
     service = new InvitationsService(
       dataSource.getRepository(Invitation),
-      new UsersService(
-        dataSource.getRepository(User),
-        teamVisibility,
-        dataSource,
-        stub<CapacityService>({}),
-        stub<ReportingService>({}),
-      ),
+      users,
       stub({ sendInvitationEmail: jest.fn().mockResolvedValue(undefined) }),
       stub({
         createSession: jest.fn().mockResolvedValue({ access_token: '' }),

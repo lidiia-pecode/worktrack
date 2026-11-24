@@ -6,20 +6,17 @@ import {
 } from '@nestjs/common';
 import { DataSource, In } from 'typeorm';
 
-import { AppDataSource } from 'src/data-source';
+import { openTestDataSource } from 'src/lib/testing/data-source';
+import { buildServices } from 'src/lib/testing/services';
 import { PaginationQuery } from 'src/lib/dtos/pagination-query.dto';
 import { Company } from 'src/companies/entities/company.entity';
 import { Team } from 'src/teams/entities/team.entity';
 import { TeamMembership } from 'src/teams/entities/team-membership.entity';
 import { TeamRole } from 'src/teams/enums/team-role.enum';
 import { TeamStatus } from 'src/teams/enums/team-status.enum';
-import { TeamVisibilityService } from 'src/teams/team-visibility.service';
 import { TeamsService } from 'src/teams/teams.service';
 import { CapacityService } from 'src/capacity/capacity.service';
-import { UserCapacity } from 'src/capacity/entities/user-capacity.entity';
-import { CompanyStandardDay } from 'src/capacity/entities/company-standard-day.entity';
-import { ReportingService } from 'src/reporting/reporting.service';
-import { ReportingPeriod } from 'src/reporting/entities/reporting-period.entity';
+import { PeriodLocksService } from 'src/reporting/period-locks.service';
 import { Project } from 'src/projects/entities/project.entity';
 import { ProjectStatus } from 'src/projects/enums/project-status.enum';
 import { timeZoneOnAnotherDay } from 'src/lib/testing/time-zones';
@@ -58,7 +55,7 @@ describe('UsersService scope', () => {
   let dataSource: DataSource;
   let service: UsersService;
   let capacity: CapacityService;
-  let reporting: ReportingService;
+  let periodLocks: PeriodLocksService;
 
   let companyId: string;
   let owner: AuthUser;
@@ -91,35 +88,9 @@ describe('UsersService scope', () => {
   };
 
   beforeAll(async () => {
-    dataSource = await new DataSource({
-      ...AppDataSource.options,
-      logging: false,
-    }).initialize();
+    dataSource = await openTestDataSource();
 
-    const teamVisibility = new TeamVisibilityService(
-      dataSource.getRepository(TeamMembership),
-      dataSource.getRepository(User),
-    );
-    reporting = new ReportingService(
-      dataSource.getRepository(ReportingPeriod),
-      dataSource.getRepository(Company),
-      teamVisibility,
-    );
-    capacity = new CapacityService(
-      dataSource.getRepository(UserCapacity),
-      dataSource.getRepository(Company),
-      dataSource.getRepository(User),
-      dataSource.getRepository(UserInactivePeriod),
-      dataSource.getRepository(CompanyStandardDay),
-      reporting,
-    );
-    service = new UsersService(
-      dataSource.getRepository(User),
-      teamVisibility,
-      dataSource,
-      capacity,
-      reporting,
-    );
+    ({ capacity, periodLocks, users: service } = buildServices(dataSource));
 
     const company = await dataSource
       .getRepository(Company)
@@ -438,15 +409,7 @@ describe('UsersService scope', () => {
     let leaver: AuthUser;
 
     beforeAll(async () => {
-      const teamVisibility = new TeamVisibilityService(
-        dataSource.getRepository(TeamMembership),
-        dataSource.getRepository(User),
-      );
-      teams = new TeamsService(
-        dataSource.getRepository(Team),
-        teamVisibility,
-        dataSource,
-      );
+      ({ teams } = buildServices(dataSource));
 
       leaver = await createUser('leaver', UserRole.EMPLOYEE);
       const membership = await dataSource.getRepository(TeamMembership).save({
@@ -825,7 +788,7 @@ describe('UsersService scope', () => {
 
     it('takes the last day of a locked month, since only the days after it change', async () => {
       const leaver = await createLongServing('lockedmonth');
-      const lockedUntil = await reporting.latestLockedDate(companyId);
+      const lockedUntil = await periodLocks.latestLockedDate(companyId);
 
       await expect(
         service.archive(

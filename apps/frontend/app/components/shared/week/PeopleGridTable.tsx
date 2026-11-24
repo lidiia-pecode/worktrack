@@ -3,20 +3,27 @@ import { ReactNode } from "react";
 import { cn } from "@/lib/utils/cn";
 import { TeamSort, TeamSortKey } from "@/lib/utils/team-rows";
 
-import { SortableHeading } from "../../team/components/SortableHeading";
-import { STICKY_PERSON_CELL } from "../../shared/week/sticky-column";
+import { SortableHeading } from "./SortableHeading";
+import { STICKY_PERSON_CELL } from "./sticky-column";
 
-export type PlanningColumn = {
+export type GridColumn = {
   key: string;
-  /** A CSS width: the table lays out its columns once, for every row. */
-  width: string;
+  /**
+   * A CSS width: the table lays out its columns once, for every row. Columns
+   * without one share what the others leave.
+   */
+  width?: string;
   heading: ReactNode;
   headingClassName: string;
 };
 
-type PlanningTableProps = {
+type PeopleGridTableProps = {
   /** The month's weeks or the week's days. */
-  columns: PlanningColumn[];
+  columns: GridColumn[];
+  /** The last column's heading: what a row's total counts. */
+  totalLabel: string;
+  /** The table's own classes: the least it may be squeezed to. */
+  className: string;
   sort: TeamSort;
   onSort: (key: TeamSortKey) => void;
   /** The previous period, kept on screen while the next one loads. */
@@ -24,14 +31,19 @@ type PlanningTableProps = {
   children: ReactNode;
 };
 
-/** Planning's grid: the person, a column per week or day, then the total. */
-export const PlanningTable = ({
+/**
+ * The grid Team time and Planning share: the person, a column per week or
+ * day, then the row's total.
+ */
+export const PeopleGridTable = ({
   columns,
+  totalLabel,
+  className,
   sort,
   onSort,
   isStale,
   children,
-}: PlanningTableProps) => {
+}: PeopleGridTableProps) => {
   const ariaSort = sort.direction === "asc" ? "ascending" : "descending";
 
   return (
@@ -42,7 +54,7 @@ export const PlanningTable = ({
       )}
       aria-busy={isStale}
     >
-      <table className="w-full min-w-4xl table-fixed border-collapse">
+      <table className={cn("w-full table-fixed border-collapse", className)}>
         <colgroup>
           <col className="w-52" />
 
@@ -87,7 +99,7 @@ export const PlanningTable = ({
               className="p-2 pr-3"
             >
               <SortableHeading
-                label="Planned"
+                label={totalLabel}
                 sortKey="total"
                 sort={sort}
                 onSort={onSort}

@@ -13,7 +13,7 @@ import {
   isWeekend,
   toISODate,
 } from "@/lib/utils/date";
-import { ABSENCE_TYPE_LABELS, isPartDayAbsence } from "@/lib/utils/absence";
+import { ABSENCE_TYPE_LABELS, isWholeDayAbsence } from "@/lib/utils/absence";
 import {
   entryTint,
   getProjectColor,
@@ -24,8 +24,8 @@ import { changedByText } from "@/lib/utils/user";
 
 import { Badge } from "@/components/ui/badge";
 
-import { ABSENCE_PATTERN } from "../consts";
-import { dayFill } from "../helpers/day-fill";
+import { ABSENCE_PATTERN } from "../../shared/week/day-styles";
+import { dayFill } from "../../shared/week/day-fill";
 import { TimesheetDay, dayActions } from "../helpers/day-state";
 
 const FOCUS_RING =
@@ -113,7 +113,7 @@ const DayRow = ({
   const { date, absence, timelogs, plannedEntries, totalMinutes } = day;
   const { opensAbsence, canAddEntry, canAddAbsence, showsPlan } =
     dayActions(day);
-  const isWholeDayOff = !!absence && !isPartDayAbsence(absence);
+  const isWholeDayOff = isWholeDayAbsence(absence);
   const weekend = isWeekend(date);
   const longLabel = formatLongDayLabel(date);
   const label = `${formatWeekdayLabel(date)} ${formatDayMonthLabel(toISODate(date))}`;

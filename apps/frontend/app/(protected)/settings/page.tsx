@@ -20,7 +20,14 @@ export default async function SettingsPage() {
     <>
       <PageHeader title="Settings" hideTitle />
 
-      <SettingsView isOwner={user.role === UserRole.OWNER} />
+      <SettingsView
+        isOwner={user.role === UserRole.OWNER}
+        signIn={{
+          email: user.email,
+          hasPassword: user.hasPassword,
+          googleLinked: user.googleLinked,
+        }}
+      />
     </>
   );
 }

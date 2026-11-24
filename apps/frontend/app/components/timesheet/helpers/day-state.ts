@@ -1,6 +1,6 @@
 import { Absence, PlanningEntry, TimeLog } from "@/types";
 import { isWeekend } from "@/lib/utils/date";
-import { isPartDayAbsence } from "@/lib/utils/absence";
+import { isWholeDayAbsence } from "@/lib/utils/absence";
 
 /** One day of the person's week, as both the grid and the list draw it. */
 export interface TimesheetDay {
@@ -38,7 +38,7 @@ export const dayActions = ({
   | "plannedEntries"
 >) => {
   // Part of a day away leaves a working day, which takes time and plans.
-  const isWholeDayOff = !!absence && !isPartDayAbsence(absence);
+  const isWholeDayOff = isWholeDayAbsence(absence);
 
   return {
     // A day an absence covers opens the absence, its locked days too, so its

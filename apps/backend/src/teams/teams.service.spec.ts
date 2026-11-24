@@ -6,7 +6,8 @@ import {
 } from '@nestjs/common';
 import { DataSource, IsNull, QueryFailedError } from 'typeorm';
 
-import { AppDataSource } from 'src/data-source';
+import { openTestDataSource } from 'src/lib/testing/data-source';
+import { buildServices } from 'src/lib/testing/services';
 import { addDays, todayISODate } from 'src/capacity/working-days.util';
 import { timeZoneOnAnotherDay } from 'src/lib/testing/time-zones';
 import { Company } from 'src/companies/entities/company.entity';
@@ -109,25 +110,14 @@ describe('TeamsService', () => {
   };
 
   beforeAll(async () => {
-    // Same connection settings as the app, minus the query logging.
-    dataSource = await new DataSource({
-      ...AppDataSource.options,
-      logging: false,
-    }).initialize();
+    dataSource = await openTestDataSource();
 
     const company = await dataSource
       .getRepository(Company)
       .save({ companyName: SLUG, slug: SLUG, timezone: TIME_ZONE });
     companyId = company.id;
 
-    service = new TeamsService(
-      dataSource.getRepository(Team),
-      new TeamVisibilityService(
-        dataSource.getRepository(TeamMembership),
-        dataSource.getRepository(User),
-      ),
-      dataSource,
-    );
+    ({ teams: service } = buildServices(dataSource));
 
     owner = await createUser('owner', UserRole.OWNER);
     alphaManager = await createUser('alphamanager', UserRole.MANAGER);

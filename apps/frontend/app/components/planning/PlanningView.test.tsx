@@ -76,10 +76,6 @@ vi.mock("./components/PlanPeriodModal", async (importOriginal) => ({
   ...(await importOriginal<object>()),
   PlanPeriodModal: () => <p>Period dialog</p>,
 }));
-vi.mock("../timesheet/components/AbsenceFormModal", async (importOriginal) => ({
-  ...(await importOriginal<object>()),
-  AbsenceFormModal: () => <p>Absence form</p>,
-}));
 
 import { usePlanningGrid } from "@/hooks/usePlanning";
 import { useAllAbsencesQuery } from "@/hooks/useAbsences";

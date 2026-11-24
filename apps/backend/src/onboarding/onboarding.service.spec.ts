@@ -2,7 +2,7 @@ import 'reflect-metadata';
 import { createHash, randomBytes } from 'crypto';
 import { DataSource, In, Like } from 'typeorm';
 
-import { AppDataSource } from 'src/data-source';
+import { openTestDataSource } from 'src/lib/testing/data-source';
 import { Activity } from 'src/activities/entities/activity.entity';
 import { ActivityStatus } from 'src/activities/enums/activity-status.enum';
 import { ActCategory } from 'src/activity-categories/entities/activities-category.entity';
@@ -84,10 +84,7 @@ describe('OnboardingService', () => {
     });
 
   beforeAll(async () => {
-    dataSource = await new DataSource({
-      ...AppDataSource.options,
-      logging: false,
-    }).initialize();
+    dataSource = await openTestDataSource();
 
     service = new OnboardingService(
       dataSource.getRepository(Team),

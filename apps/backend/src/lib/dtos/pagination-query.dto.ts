@@ -2,6 +2,7 @@ import { Type } from 'class-transformer';
 import { IsInt, IsOptional, Max, Min } from 'class-validator';
 import {
   DEFAULT_PAGINATION_PAGE_SIZE,
+  MAX_PAGINATION_PAGE,
   MAX_PAGINATION_PAGE_SIZE,
 } from '../consts';
 
@@ -9,6 +10,7 @@ export class PaginationQuery {
   @IsOptional()
   @IsInt()
   @Min(1)
+  @Max(MAX_PAGINATION_PAGE)
   @Type(() => Number)
   page: number = 1;
 

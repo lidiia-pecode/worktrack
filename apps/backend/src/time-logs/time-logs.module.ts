@@ -5,14 +5,14 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { TimeLog } from './entities/time-log.entity';
 import { ProjectActivity } from 'src/projects/entities/project-activity.entity';
 import { User } from 'src/users/entities/user.entity';
-import { ReportingModule } from 'src/reporting/reporting.module';
+import { PeriodLocksModule } from 'src/reporting/period-locks.module';
 import { TeamsModule } from 'src/teams/teams.module';
 import { CapacityModule } from 'src/capacity/capacity.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([TimeLog, ProjectActivity, User]),
-    ReportingModule,
+    PeriodLocksModule,
     TeamsModule,
     CapacityModule,
   ],

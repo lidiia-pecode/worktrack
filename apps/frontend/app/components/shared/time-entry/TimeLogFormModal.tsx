@@ -10,12 +10,14 @@ import TextareaAutosize from "react-textarea-autosize";
 
 import { PickerProjectActivity } from "@/hooks/useAssignableActivities";
 
-import { ImpactDialog } from "../../shared/ImpactDialog";
-import { FormSelect } from "../../shared/FormSelect";
-import { TimePicker } from "../../shared/TimePicker";
-import { ResourceFormModal } from "../../shared/resource/ResourceFormModal";
+import { DiscardChangesModal } from "../DiscardChangesModal";
+import { ImpactDialog } from "../ImpactDialog";
+import { useDiscardGuard } from "../useDiscardGuard";
+import { FormSelect } from "../FormSelect";
+import { TimePicker } from "../TimePicker";
+import { ResourceFormModal } from "../resource/ResourceFormModal";
 import { projects } from "../../layout/sidebar/sidebar-navigation";
-import { ChangedByNote } from "./ChangedByNote";
+import { ChangedByNote } from "../ChangedByNote";
 import { TimeLog, TimeLogPayload, UpdateTimeLogPayload } from "@/types";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -34,7 +36,7 @@ import {
   EntryChoice,
   readLastEntryChoice,
   storeLastEntryChoice,
-} from "../helpers/last-entry-choice";
+} from "./last-entry-choice";
 import { DATE_LOCALE } from "@/lib/utils/date";
 
 const FORM_ID = "timelog-form";
@@ -45,8 +47,8 @@ const timeLogSchema = z
   .object({
     projectId: z.string().min(1, "Select a project"),
     activityId: z.string().min(1, "Select an activity"),
-    hours: z.coerce.number().min(0).max(24),
-    minutes: z.coerce.number().min(0).max(59),
+    hours: z.number().min(0).max(24),
+    minutes: z.number().min(0).max(59),
     note: optionalNoteSchema,
     isBillable: z.boolean(),
   })
@@ -139,6 +141,8 @@ type Props = {
   isDeleting: boolean;
   /** A new entry's day can be taken off instead, in the absence form for that day. */
   onAddAbsence?: () => void;
+  /** The day already holds an absence, which the absence form then opens. */
+  hasAbsence?: boolean;
 };
 
 export const TimeLogFormModal = ({
@@ -156,6 +160,7 @@ export const TimeLogFormModal = ({
   isSaving,
   isDeleting,
   onAddAbsence,
+  hasAbsence = false,
 }: Props) => {
   const isEditMode = !!timelog;
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
@@ -197,8 +202,7 @@ export const TimeLogFormModal = ({
     reset,
     formState: { errors, isDirty, isSubmitted, isSubmitting },
   } = useForm<TimeLogFormData>({
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    resolver: zodResolver(timeLogSchema) as any,
+    resolver: zodResolver(timeLogSchema),
     defaultValues,
   });
 
@@ -348,6 +352,13 @@ export const TimeLogFormModal = ({
     }
   };
 
+  // Leaving for the absence form drops what was typed, so it asks first.
+  const leaveForAbsence = useDiscardGuard({
+    hasUnsavedChanges: isDirty,
+    isBusy: isSaving || isDeleting,
+    onClose: () => onAddAbsence?.(),
+  });
+
   return (
     <>
       <ResourceFormModal
@@ -373,8 +384,8 @@ export const TimeLogFormModal = ({
             className="flex flex-col items-end gap-1"
           >
             <TimePicker
-              hours={Number(hours)}
-              minutes={Number(minutes)}
+              hours={hours}
+              minutes={minutes}
               onHoursChange={(value) => setDuration("hours", value)}
               onMinutesChange={(value) => setDuration("minutes", value)}
               formId={FORM_ID}
@@ -397,13 +408,15 @@ export const TimeLogFormModal = ({
                 type="button"
                 variant="ghost"
                 size="sm"
-                onClick={onAddAbsence}
+                onClick={leaveForAbsence.dismiss}
                 className="mr-auto max-sm:px-2.5"
                 disabled={isSaving}
               >
                 <CalendarOff className="size-4" />
                 {/* Icon only on a phone, so the footer stays on one row. */}
-                <span className="max-sm:sr-only">Add absence</span>
+                <span className="max-sm:sr-only">
+                  {hasAbsence ? "Open absence" : "Add absence"}
+                </span>
               </Button>
             )}
 
@@ -584,6 +597,8 @@ export const TimeLogFormModal = ({
         confirmVariant="destructive"
         loading={isDeleting}
       />
+
+      <DiscardChangesModal {...leaveForAbsence.discardDialog} />
     </>
   );
 };

@@ -5,7 +5,7 @@ import { entryTint, getProjectColor } from "@/lib/utils/project-colors";
 import { getTimelogDisplay } from "@/lib/utils/timelog";
 import { cn } from "@/lib/utils/cn";
 import { TWO_LINE_MIN_HEIGHT } from "../helpers/build-segments";
-import { timelogDetailsId } from "./TimelogPopover";
+import { timelogDetailsId } from "../../shared/time-entry/TimelogPopover";
 
 type TimelogSegmentProps = {
   segment: Segment<TimeLog>;

@@ -5,7 +5,7 @@ import { Absence } from 'src/absences/entities/absence.entity';
 import { Company } from 'src/companies/entities/company.entity';
 import { User } from 'src/users/entities/user.entity';
 import { UserInactivePeriod } from 'src/users/entities/user-inactive-period.entity';
-import { ReportingModule } from 'src/reporting/reporting.module';
+import { PeriodLocksModule } from 'src/reporting/period-locks.module';
 
 import { UserCapacity } from './entities/user-capacity.entity';
 import { CompanyStandardDay } from './entities/company-standard-day.entity';
@@ -23,7 +23,7 @@ import { ExpectedHoursService } from './expected-hours.service';
       User,
       UserInactivePeriod,
     ]),
-    ReportingModule,
+    PeriodLocksModule,
   ],
   controllers: [CapacityController],
   providers: [CapacityService, ExpectedHoursService],

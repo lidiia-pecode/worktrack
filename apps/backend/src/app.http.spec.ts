@@ -80,6 +80,7 @@ describe('the app over HTTP', () => {
   let ownerEmail: string;
   let employeeCookie: string;
 
+  /** `body` is sent as JSON; a string is sent as the JSON text it already is. */
   const call = (
     route: string,
     { cookie, body }: { cookie?: string; body?: unknown } = {},
@@ -93,7 +94,12 @@ describe('the app over HTTP', () => {
         ...(cookie ? { cookie } : {}),
         ...(body ? { 'content-type': 'application/json' } : {}),
       },
-      body: body ? JSON.stringify(body) : undefined,
+      body:
+        typeof body === 'string'
+          ? body
+          : body
+            ? JSON.stringify(body)
+            : undefined,
     });
   };
 
@@ -305,6 +311,50 @@ describe('the app over HTTP', () => {
     expect(response.status).toBe(400);
     expect(body.statusCode).toBe(400);
     expect(Object.keys(body.errors).sort()).toEqual(['firstName', 'nickname']);
+  });
+
+  describe('input no screen sends', () => {
+    // Written as text: building the object and serialising it would overflow
+    // the test's own stack before the request is sent.
+    const nested = (depth: number) =>
+      `${'{"note":'.repeat(depth)}"deep"${'}'.repeat(depth)}`;
+
+    it.each([
+      ['a null character in a search', 'GET /users?search=a%00b', undefined],
+      [
+        'a date far past any real one',
+        'GET /planning/week?date=9999-12-31',
+        undefined,
+      ],
+      [
+        'a page number no list has',
+        'GET /users?page=1000000000000000000',
+        undefined,
+      ],
+      ['a body nested thousands deep', 'POST /time-logs', nested(5000)],
+    ])('answers 400 to %s', async (_name, route, body) => {
+      const response = await call(route, { cookie: ownerCookie, body });
+
+      expect(response.status).toBe(400);
+    });
+
+    it('refuses a note of only spaces', async () => {
+      const response = await call('POST /time-logs', {
+        cookie: ownerCookie,
+        body: {
+          projectActivityId: ANY_ID,
+          minutes: 60,
+          date: '2026-11-02',
+          note: '    ',
+        },
+      });
+      const { errors } = (await response.json()) as {
+        errors: Record<string, string[]>;
+      };
+
+      expect(response.status).toBe(400);
+      expect(Object.keys(errors)).toEqual(['note']);
+    });
   });
 
   it('never sends a password hash or a Google id', async () => {
