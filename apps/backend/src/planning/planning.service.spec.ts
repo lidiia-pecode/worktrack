@@ -613,6 +613,25 @@ describe('PlanningService', () => {
       expect(planned?.plannedMinutes).toBe(3 * HOUR + 30);
     });
 
+    it("removes a line's own plan from a partly absent day that has no room left for it", async () => {
+      await partlyAbsentOn(member.id, WEDNESDAY, 4 * HOUR);
+      await existingEntry(member.id, WEDNESDAY, 2 * HOUR);
+      await existingEntry(member.id, WEDNESDAY, 6 * HOUR, otherProjectId);
+      const plan = period(WEDNESDAY, WEDNESDAY, [
+        { projectId, minutesPerDay: 4 * HOUR },
+        { projectId: otherProjectId, minutesPerDay: 4 * HOUR },
+      ]);
+
+      expect((await service.previewPeriod(plan, manager)).problems).toEqual([]);
+      await service.planPeriod(plan, manager);
+
+      expect(
+        (await entriesFor(member.id))
+          .filter((e) => e.date === WEDNESDAY)
+          .map((e) => [e.projectId, e.plannedMinutes]),
+      ).toEqual([[projectId, 4 * HOUR]]);
+    });
+
     it('replaces the listed project and keeps the others', async () => {
       await existingEntry(member.id, MONDAY, 2 * HOUR);
       await existingEntry(member.id, MONDAY, HOUR, otherProjectId);

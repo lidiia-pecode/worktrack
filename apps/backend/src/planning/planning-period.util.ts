@@ -32,6 +32,8 @@ export interface PeriodLine {
 export interface PeriodWrites {
   created: { date: string; projectId: string; minutes: number }[];
   changed: { entry: PlanningEntry; minutes: number }[];
+  /** Plans of the period's projects on a day with no room left for them. */
+  removed: PlanningEntry[];
 }
 
 /** Down to a whole quarter hour, so a fitted plan is one the form could make. */
@@ -39,10 +41,11 @@ const toPlanStep = (minutes: number) =>
   Math.floor(minutes / PLAN_MINUTES_STEP) * PLAN_MINUTES_STEP;
 
 /**
- * The plans a period plan creates and the ones whose hours it changes. On a
- * day `roomOn` names, such as one the person is partly away, the lines take
- * only that room, in their order, so the last ones give way; a line left
- * nothing there writes nothing.
+ * The plans a period plan creates, the ones whose hours it changes and the
+ * ones it removes. On a day `roomOn` names, such as one the person is partly
+ * away, the lines take only that room, in their order, so the last ones give
+ * way: a line left nothing there adds no plan and removes the one it had,
+ * so the day ends within its room whatever was planned before.
  */
 export const periodWrites = ({
   plannedDays,
@@ -58,7 +61,7 @@ export const periodWrites = ({
   const existingByDayAndProject = new Map(
     existing.map((entry) => [`${entry.date}|${entry.projectId}`, entry]),
   );
-  const writes: PeriodWrites = { created: [], changed: [] };
+  const writes: PeriodWrites = { created: [], changed: [], removed: [] };
 
   for (const date of plannedDays) {
     let room = roomOn(date);
@@ -72,7 +75,10 @@ export const periodWrites = ({
           ? line.minutesPerDay
           : Math.min(line.minutesPerDay, toPlanStep(room));
       if (room !== undefined) room -= minutes;
-      if (minutes === 0) continue;
+      if (minutes === 0) {
+        if (entry) writes.removed.push(entry);
+        continue;
+      }
 
       if (!entry) {
         writes.created.push({ date, projectId: line.projectId, minutes });
@@ -124,9 +130,10 @@ export const periodProblems = ({
   dayLimitOn: (date: string) => number;
 }): PeriodProblem[] => {
   const listed = new Set(lines.map((line) => line.projectId));
-  const newMinutes = new Map(
-    writes.changed.map(({ entry, minutes }) => [entry.id, minutes]),
-  );
+  const newMinutes = new Map([
+    ...writes.changed.map(({ entry, minutes }) => [entry.id, minutes] as const),
+    ...writes.removed.map((entry) => [entry.id, 0] as const),
+  ]);
   const sum = (minutes: number[]) =>
     minutes.reduce((total, value) => total + value, 0);
 

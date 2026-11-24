@@ -54,7 +54,7 @@ type MonthCalendarProps = {
   maxDate?: Date;
   /** Days that can't be chosen inside the limits, inert like those past them. */
   isDayDisabled?: (day: Date) => boolean;
-  /** A move to another month; the calendar opens on `initialMonth`. */
+  /** A move to another month; opening on `initialMonth` is not reported. */
   onMonthChange?: (month: Date) => void;
   onSelectDay: (day: Date) => void;
   /** The day under the pointer or keyboard focus, null once it leaves. */

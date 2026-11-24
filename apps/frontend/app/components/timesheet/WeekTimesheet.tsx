@@ -329,9 +329,14 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
     });
 
   // From the day's own form: the day becomes an absence, whole or in part.
+  // A day partly away already opens that absence, since a day holds one.
   const openDayAbsence = (date: string) => {
     setModalState(null);
-    setAbsenceModal({ date, isSingleDay: true });
+    setAbsenceModal({
+      date,
+      absence: absencesByDate[date],
+      isSingleDay: true,
+    });
   };
 
   const openEdit = (timelog: TimeLog) => {

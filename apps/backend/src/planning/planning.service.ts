@@ -501,8 +501,10 @@ export class PlanningService {
       changes: lines.map(({ projectId }) => ({
         projectId,
         added: writes.created.filter((c) => c.projectId === projectId).length,
-        changed: writes.changed.filter((c) => c.entry.projectId === projectId)
-          .length,
+        changed: [
+          ...writes.changed.map((c) => c.entry),
+          ...writes.removed,
+        ].filter((entry) => entry.projectId === projectId).length,
       })),
       dayLimitMinutes,
       daysInAnotherTeam,
@@ -561,10 +563,12 @@ export class PlanningService {
         }),
       ]);
 
+      await manager.remove(PlanningEntry, writes.removed);
+
       return {
         days: plannedDays.size,
         created: writes.created.length,
-        updated: writes.changed.length,
+        updated: writes.changed.length + writes.removed.length,
       };
     });
   }

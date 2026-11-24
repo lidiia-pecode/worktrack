@@ -463,8 +463,8 @@ minutes (the form steps by five); the database allows minutes only on a
 one-day absence. The day must have working hours, the part must be shorter
 than the person's working day, and it must fit what is left of the day once
 the time logged on it is counted. These limits are measured again only when
-the day or the minutes change, so time logged afterwards stays allowed and
-shows as over. Time can be logged on that day, its plans stay, and nobody is
+the day changes or the hours grow, so time logged afterwards stays allowed and
+shows as over, and the absence can still be shortened. Time can be logged on that day, its plans stay, and nobody is
 notified. There are three fixed types, a database enum rather than a
 per-company list.
 
@@ -522,7 +522,8 @@ of one day, and removed per project across a period, never one by one. A day a
 whole-day absence covers is skipped, and so is a day before the person's account
 was created, which Planning shows closed. On a day with part of it away, a
 period plans only what is left, filling its projects in order, the last ones
-giving way, and its preview names the day. Recording a whole-day absence, or
+giving way — one left no room loses the plan it had there — and its preview
+names the day. Recording a whole-day absence, or
 widening or moving one, deletes that person's plans on its days, whoever records it — the
 person themselves included, though they cannot write planning otherwise.
 Plans on its days in a locked month stay, as those days do, and deleting or
@@ -976,7 +977,8 @@ see, and how a new company gets started.
   an owner or manager records them for somebody from Team time or opens one
   from Planning. A form opened from a day is that day, whole or in part (Whole
   day, Rest of the day once time is logged, or Set hours), with "Add more days"
-  for a range; the timesheet's own button takes a first and a last day,
+  for a range; a day with time logged offers only its part, and one already
+  partly away opens that absence; the timesheet's own button takes a first and a last day,
   opening on the first working day it can take. Every date field greys out the
   days an absence can't take — time logged, another absence, a locked month —
   and the last day can't reach past one. The timesheet and the team grid mark
@@ -1265,7 +1267,7 @@ in cookies, never in a response.
 ### Engineering state
 
 This is the one place that counts the tests. Backend coverage is fifty-one
-suites and 1047 tests, covering the roles of every route and the whole app over
+suites and 1048 tests, covering the roles of every route and the whole app over
 HTTP (every route refused signed out but the public ones), the role-visibility filters and reach by team
 membership dates (a team keeping its history after a move), team and invitation
 rules, the Google callbacks and notifications, time-log, absence, capacity and

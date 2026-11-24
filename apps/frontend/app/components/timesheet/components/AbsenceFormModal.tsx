@@ -7,7 +7,13 @@ import * as z from "zod";
 import { CalendarPlus, Info, Lock, Trash2, X } from "lucide-react";
 import TextareaAutosize from "react-textarea-autosize";
 
-import { Absence, AbsencePayload, UpdateAbsencePayload, User } from "@/types";
+import {
+  Absence,
+  AbsenceDay,
+  AbsencePayload,
+  UpdateAbsencePayload,
+  User,
+} from "@/types";
 import { AbsenceType } from "@/types/enums";
 import {
   ABSENCE_TYPE_LABELS,
@@ -222,6 +228,12 @@ const firstUnavailableAfter = (
   return undefined;
 };
 
+/** Why a day that logged time fills takes no new absence. */
+const filledDayText = ({ workingMinutes, loggedMinutes }: AbsenceDay) =>
+  workingMinutes === 0
+    ? `${formatDuration(loggedMinutes)} is logged on this day, which has no working hours, so it can't be taken off.`
+    : `${formatDuration(loggedMinutes)} is logged on this day, so none of it is left to take off. Remove some of that time first.`;
+
 const deletedAbsenceText = (absence: Absence) => {
   if (isPartDayAbsence(absence)) {
     return `${ABSENCE_TYPE_LABELS[absence.type]} on ${formatAbsenceRange(absence)} will be deleted, and that day's hours are expected again. This can't be undone.`;
@@ -372,16 +384,27 @@ export const AbsenceFormModal = ({
     day.loggedMinutes > 0 &&
     leftOfDay > 0 &&
     leftOfDay < day.workingMinutes;
+  // A day with time logged can't be away whole, as the server refuses it.
+  const canBeWhole = !day || day.loggedMinutes === 0;
+  const partLength: Length = offersRest ? "rest" : "hours";
   const length: Length = !offersPart
     ? "whole"
-    : chosenLength === "rest" && !offersRest
-      ? "hours"
+    : (chosenLength === "whole" && !canBeWhole) ||
+        (chosenLength === "rest" && !offersRest)
+      ? partLength
       : chosenLength;
   const isPart = length !== "whole";
+  // Until the day is read, the form doesn't know whether it can be away whole.
+  const isDayPending = offersPart && !day && !dayFailed;
+  // A new absence on a day that time already fills has nothing to take.
+  const filledDay =
+    offersPart && !absence && !!day && day.loggedMinutes > 0 && leftOfDay === 0
+      ? day
+      : null;
   const partTotal =
     length === "rest" ? leftOfDay : partHours * 60 + partMinutes;
   const lengthOptions: { value: Length; label: string }[] = [
-    { value: "whole", label: "Whole day" },
+    ...(canBeWhole ? [{ value: "whole" as const, label: "Whole day" }] : []),
     ...(offersRest
       ? [
           {
@@ -398,11 +421,12 @@ export const AbsenceFormModal = ({
           minutes: partTotal,
           workingMinutes: day.workingMinutes,
           loggedMinutes: day.loggedMinutes,
-          // As on the server: only a new day or new hours are measured again.
+          // As on the server: only a new day or more hours are measured again.
           isMeasuredAgainstLogged:
             !absence ||
             startDate !== absence.startDate ||
-            partTotal !== absence.minutes,
+            absence.minutes === null ||
+            partTotal > absence.minutes,
         })
       : undefined;
   // "Enter the hours" waits for a save; a limit shows as the hours change.
@@ -452,7 +476,9 @@ export const AbsenceFormModal = ({
   // Recording the absence deletes these on the server; named here first.
   const removedPlans = useMemo(() => {
     // Part of a day keeps the day's plans.
-    if (isPart || !isRangeComplete || !arePlansKnown) return null;
+    if (isPart || isDayPending || !isRangeComplete || !arePlansKnown) {
+      return null;
+    }
 
     // Plans on its days in a locked month stay, as those days do.
     const removable = plansInRange.filter((plan) => !isLocked(plan.date));
@@ -472,7 +498,14 @@ export const AbsenceFormModal = ({
         [...minutesByProject].map(([name, minutes]) => ({ name, minutes })),
       ),
     };
-  }, [isPart, isRangeComplete, arePlansKnown, plansInRange, isLocked]);
+  }, [
+    isPart,
+    isDayPending,
+    isRangeComplete,
+    arePlansKnown,
+    plansInRange,
+    isLocked,
+  ]);
 
   // A first day past the last, or one with a day it can't take before the
   // last, takes the last day with it.
@@ -525,7 +558,7 @@ export const AbsenceFormModal = ({
 
   const onSubmit = async (data: AbsenceFormData) => {
     setTriedSaving(true);
-    if (isPart && (!day || partError)) return;
+    if (filledDay || (isPart && (!day || partError))) return;
 
     const shared = {
       type: data.type,
@@ -613,7 +646,13 @@ export const AbsenceFormModal = ({
               form={FORM_ID}
               size="sm"
               isLoading={isSaving}
-              disabled={isDeleting || !arePlansKnown || (isPart && !day)}
+              disabled={
+                isDeleting ||
+                !arePlansKnown ||
+                isDayPending ||
+                !!filledDay ||
+                (isPart && !day)
+              }
             >
               {isEditMode ? "Save changes" : "Add absence"}
             </Button>
@@ -674,7 +713,14 @@ export const AbsenceFormModal = ({
             </>
           )}
 
-          {offersPart && (
+          {filledDay && (
+            <p className="flex gap-2 text-sm text-muted-foreground">
+              <Info className="mt-0.5 size-4 shrink-0" aria-hidden />
+              <span>{filledDayText(filledDay)}</span>
+            </p>
+          )}
+
+          {offersPart && !filledDay && (
             <SegmentedControl
               label="How long"
               options={lengthOptions}
@@ -758,7 +804,7 @@ export const AbsenceFormModal = ({
             </Field>
           )}
 
-          {length === "hours" && (
+          {length === "hours" && !filledDay && (
             <Field
               id="absence-hours"
               group
@@ -789,7 +835,7 @@ export const AbsenceFormModal = ({
             </Field>
           )}
 
-          {length === "rest" && shownPartError && (
+          {length === "rest" && !filledDay && shownPartError && (
             <p className="text-xs text-destructive-text">{shownPartError}</p>
           )}
 
@@ -799,17 +845,21 @@ export const AbsenceFormModal = ({
             </PartLoadError>
           )}
 
-          {isPart && day && day.plannedMinutes > 0 && (
-            <p className="flex gap-2 text-sm text-muted-foreground">
-              <Info className="mt-0.5 size-4 shrink-0" aria-hidden />
-              <span>
-                {plannedAgainstLeftText(
-                  day.plannedMinutes,
-                  Math.max(0, day.workingMinutes - partTotal),
-                )}
-              </span>
-            </p>
-          )}
+          {isPart &&
+            !filledDay &&
+            day &&
+            partTotal > 0 &&
+            day.plannedMinutes > 0 && (
+              <p className="flex gap-2 text-sm text-muted-foreground">
+                <Info className="mt-0.5 size-4 shrink-0" aria-hidden />
+                <span>
+                  {plannedAgainstLeftText(
+                    day.plannedMinutes,
+                    Math.max(0, day.workingMinutes - partTotal),
+                  )}
+                </span>
+              </p>
+            )}
 
           {plansFailed && (
             <PartLoadError onRetry={() => refetchPlans()}>

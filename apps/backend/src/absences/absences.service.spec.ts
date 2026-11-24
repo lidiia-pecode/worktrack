@@ -747,15 +747,19 @@ describe('AbsencesService', () => {
       expect(await noticesFor(manager.id)).toHaveLength(0);
     });
 
-    it('is measured again only when its day or hours change', async () => {
+    it('is measured again only when its day changes or its hours grow', async () => {
       const absence = await service.create(partOf(240), member);
       await existingTimeLog(member.id, START, 360);
 
       await expect(
         service.update(absence.id, { note: 'Dentist' }, member),
       ).resolves.toMatchObject({ note: 'Dentist', minutes: 240 });
+      // Shortened towards what was really taken, though still over what is left.
       await expect(
         service.update(absence.id, { minutes: 180 }, member),
+      ).resolves.toMatchObject({ minutes: 180 });
+      await expect(
+        service.update(absence.id, { minutes: 200 }, member),
       ).rejects.toThrow(/Only 2h of Tue 10 Feb is left/);
     });
 

@@ -317,9 +317,13 @@ export class AbsencesService {
         );
       }
 
-      // A part of a day is measured against the time logged when its day or
-      // hours change, not on a later edit of its reason or note.
-      const recheckPart = moved || minutes !== absence.minutes;
+      // A part of a day is measured against the time logged when its day
+      // changes or its hours grow: not on a later edit of its reason or note,
+      // nor when it is shortened, which only frees the day.
+      const recheckPart =
+        moved ||
+        absence.minutes === null ||
+        (minutes !== null && minutes > absence.minutes);
 
       absence.startDate = startDate;
       absence.endDate = endDate;

@@ -5,6 +5,7 @@ import { useId, useRef, useState } from "react";
 import { Field } from "@/components/ui/field";
 import { Popover, PopoverContent } from "@/components/ui/popover";
 import {
+  firstOfMonth,
   formatDayMonthYearLabel,
   fromISODate,
   toISODate,
@@ -23,7 +24,7 @@ type DatePickerProps = {
   maxDate?: string | null;
   /** Days inside the limits that can't be chosen, YYYY-MM-DD. */
   isDayDisabled?: (date: string) => boolean;
-  /** The first of a month the calendar moves to, YYYY-MM-DD; it opens on `value`'s. */
+  /** The first of the month the calendar shows, YYYY-MM-DD: as it opens and as it moves. */
   onMonthChange?: (month: string) => void;
   label?: string;
   description?: string;
@@ -58,7 +59,13 @@ export const DatePicker = ({
       group
       className={className}
     >
-      <Popover open={open} onOpenChange={setOpen}>
+      <Popover
+        open={open}
+        onOpenChange={(isOpening) => {
+          setOpen(isOpening);
+          if (isOpening) onMonthChange?.(toISODate(firstOfMonth(day)));
+        }}
+      >
         <DateFieldTrigger
           label={formatDayMonthYearLabel(value)}
           invalid={!!error}

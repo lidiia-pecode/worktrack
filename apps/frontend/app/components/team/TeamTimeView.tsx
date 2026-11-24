@@ -619,6 +619,8 @@ export const TeamTimeView = ({
             setAbsenceForm({
               user: entryForm.user,
               date: entryForm.date,
+              // A day partly away already opens that absence.
+              absence: absencesByUser[entryForm.user.id]?.[entryForm.date],
               isSingleDay: true,
             });
           }}
