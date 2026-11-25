@@ -34,12 +34,7 @@ const GoogleButton = ({
         className,
       )}
     >
-      <Image
-        src="/images/google-icon-logo.svg"
-        alt="Google"
-        width={18}
-        height={18}
-      />
+      <Image src="/images/google-icon-logo.svg" alt="" width={18} height={18} />
       Continue with Google
     </Button>
   );

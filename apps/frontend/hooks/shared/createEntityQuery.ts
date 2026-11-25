@@ -20,7 +20,6 @@ type EntityQueryApi<TEntity, TParams> = {
 
 type CreateEntityQueryConfig<TEntity, TParams> = {
   queryKey: {
-    list: (page: number, params?: TParams) => QueryKey;
     infinite: (params?: TParams) => QueryKey;
     allPages: (params?: TParams) => QueryKey;
   };
@@ -46,20 +45,6 @@ export function createEntityQuery<
   TEntity,
   TParams extends Record<string, unknown> = Record<string, never>,
 >(config: CreateEntityQueryConfig<TEntity, TParams>) {
-  const useEntityQuery = (page = 1, params?: TParams) => {
-    const query = useQuery({
-      queryKey: config.queryKey.list(page, params),
-      queryFn: () =>
-        config.api.getAll({
-          ...params,
-          page,
-        } as TParams & PageParams),
-      placeholderData: config.keepPreviousData ? keepPreviousData : undefined,
-    });
-
-    return toListResult(query);
-  };
-
   const useEntityAllPagesQuery = (
     params?: TParams,
     options: { enabled?: boolean } = {},
@@ -125,7 +110,6 @@ export function createEntityQuery<
   };
 
   return {
-    useQuery: useEntityQuery,
     useInfiniteQuery: useEntityInfiniteQuery,
     useAllPagesQuery: useEntityAllPagesQuery,
   };

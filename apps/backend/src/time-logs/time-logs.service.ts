@@ -408,7 +408,6 @@ export class TimeLogsService {
 
       const log = await this.getLogForUpdate(id, user.companyId, manager);
 
-      // 1. Reporting Period Check for existing and new target dates
       await this.assertDateNotLocked(manager, user.companyId, log.date);
       await this.assertNotFuture(
         manager,
@@ -656,7 +655,7 @@ export class TimeLogsService {
 
   /**
    * Validates that a ProjectActivity exists, belongs to the caller's company,
-   * is assigned to the caller, and is currently available for time logging.
+   * is assigned to the entry's owner, and is currently available for time logging.
    */
   private async resolveProjectActivity(
     projectActivityId: string,

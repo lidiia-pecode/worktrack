@@ -21,11 +21,8 @@ export function createCrudClient<
 >({ endpoint }: CrudClientConfig) {
   const client = createClient({ endpoint });
 
-  const getAll = (options?: number | GetAllOptions<TQuery>) => {
-    const query = typeof options === "number" ? { page: options } : options;
-
-    return client.get<TList>(buildQueryString(query));
-  };
+  const getAll = (options?: GetAllOptions<TQuery>) =>
+    client.get<TList>(buildQueryString(options));
 
   return {
     getAll,

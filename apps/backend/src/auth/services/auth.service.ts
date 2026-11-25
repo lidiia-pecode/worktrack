@@ -106,13 +106,11 @@ export class AuthService {
       throw new UnauthorizedException('User company has changed');
     }
 
-    // 1. hash the token that came from the client
     const incomingRefreshHash = this.tokenService.hashRefreshToken(
       refreshToken,
       session.id,
     );
 
-    // 2. new refresh token and its hash
     const newRefreshToken = this.tokenService.createRefreshToken({
       id: user.id,
       companyId: user.companyId,
@@ -126,7 +124,8 @@ export class AuthService {
 
     const newExpiresAt = this.sessionService.getSessionExpirationDate();
 
-    // 3. ATOMIC UPDATE:
+    // Rotates only while the session still stores this token's hash, so a
+    // reused token or a refresh that lost a race to another one fails here.
     const isUpdated = await this.sessionService.rotateRefreshHash(
       session.id,
       incomingRefreshHash,
@@ -135,7 +134,6 @@ export class AuthService {
       metadata,
     );
 
-    // 4. Handle failed update (Token Reuse or concurrent retry)
     if (!isUpdated) {
       const currentSession = await this.sessionService.findById(session.id);
 
@@ -176,7 +174,6 @@ export class AuthService {
       );
     }
 
-    // 5. return new Access Token
     const accessToken = this.tokenService.createAccessToken({
       id: user.id,
       email: user.email,
@@ -305,10 +302,6 @@ export class AuthService {
     newPassword: string,
     metadata: SessionMetadata,
   ) {
-    // Hashed before the transaction, which would otherwise hold its
-    // connection through the slow hash.
-    const passwordHash = await this.passwordService.hash(newPassword);
-
     return this.dataSource.transaction(async (manager) => {
       const resetToken = await this.passwordResetService.consumeToken(
         token,
@@ -341,6 +334,8 @@ export class AuthService {
           );
         }
       }
+
+      const passwordHash = await this.passwordService.hash(newPassword);
 
       await this.usersService.updatePassword(
         user.id,

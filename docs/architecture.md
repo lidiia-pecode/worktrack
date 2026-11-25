@@ -110,8 +110,9 @@ SHA-256 hashes. Each is used inside a transaction, so a completion that fails
 
 **Passwords.** Hashed with scrypt and compared in constant time
 (`lib/utils/hash-password.util.ts`). A hash takes about 128 MiB, so hashes run
-one at a time and the rest wait. Hash before opening a transaction: a waiting
-hash inside one holds a database connection for as long as it waits.
+one at a time and the rest wait. A flow that takes a one-time token hashes
+only once the token is found valid, so a made-up token costs no hash; a hash
+inside a transaction holds its database connection while it waits.
 
 **On the frontend.** The browser reaches the backend only through
 `/api/backend/*` on the frontend's domain ([`workflow.md`](./workflow.md)), so

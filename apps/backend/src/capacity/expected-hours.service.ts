@@ -234,22 +234,27 @@ export class ExpectedHoursService {
 
     const calendar = await this.capacity.calendarFor(companyId, manager);
     const today = todayISODate(calendar.timezone);
-    const [timelines, activeDates, absencesByUser] = await Promise.all([
-      this.capacity.timelinesFor(
-        companyId,
-        userIds,
-        to,
-        calendar.defaultTimeline,
-        manager,
-      ),
-      this.capacity.activeDatesFor(
-        companyId,
-        userIds,
-        calendar.timezone,
-        manager,
-      ),
-      this.absencesIn(companyId, userIds, from, to, manager),
-    ]);
+    // One after another: inside a transaction they share its one connection.
+    const timelines = await this.capacity.timelinesFor(
+      companyId,
+      userIds,
+      to,
+      calendar.defaultTimeline,
+      manager,
+    );
+    const activeDates = await this.capacity.activeDatesFor(
+      companyId,
+      userIds,
+      calendar.timezone,
+      manager,
+    );
+    const absencesByUser = await this.absencesIn(
+      companyId,
+      userIds,
+      from,
+      to,
+      manager,
+    );
 
     for (const userId of userIds) {
       const timeline = timelines.get(userId);

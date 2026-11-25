@@ -1,4 +1,3 @@
-// core/create-client.ts
 import { API_PROXY_URL } from "@/lib/constants";
 import { readDownloadedFile } from "./downloaded-file";
 import { apiClient, authorizedFetch, basicClient } from "./http-client";
