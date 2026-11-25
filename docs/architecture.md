@@ -53,6 +53,18 @@ Browser
 `AccessGuard` and `RolesGuard` run for every route, after the rate limit, so a
 route needs a session unless it is marked `@Public()`.
 
+## Writes and transactions
+
+A write whose rules depend on other rows (a person's working hours, a locked
+month, a team's reach) runs in one transaction. Every read inside it goes
+through that transaction's `EntityManager`, the `manager` argument the services
+take, never through an injected repository: such a read waits for a second
+connection while the transaction holds the first, and enough writes at once
+leave the pool with none to give (the "many saves at once" spec in
+`time-logs.service.spec.ts`). On that one connection the reads run one after
+another, not in `Promise.all`. A request waits at most ten seconds for a free
+connection (`connectTimeoutMS` in `apps/backend/src/config/database.options.ts`).
+
 ## Authentication
 
 The code is in `apps/backend/src/auth/`. What a person may do (sign-in,
