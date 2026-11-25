@@ -19,7 +19,7 @@ const groupRuns = <T,>(items: T[], getGroup?: (item: T) => string) =>
     return runs;
   }, []);
 
-export interface EntityPickerProps<T> {
+interface EntityPickerProps<T> {
   items: T[];
   selectedIds: string[];
   onToggle: (item: T) => void;

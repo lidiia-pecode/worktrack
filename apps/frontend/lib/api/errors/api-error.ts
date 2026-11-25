@@ -18,7 +18,7 @@ export function isApiValidationError(
   );
 }
 
-export type ApiMessageError = {
+type ApiMessageError = {
   statusCode: number;
   message?: string | string[];
   error?: string;

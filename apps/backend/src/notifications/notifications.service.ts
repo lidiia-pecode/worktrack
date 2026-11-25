@@ -4,6 +4,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, In, IsNull, LessThan, Repository } from 'typeorm';
 
 import type { AuthUser } from 'src/auth/auth-strategies/types';
+import { MS_PER_DAY } from 'src/lib/consts';
 import type { Invitation } from 'src/invitations/entities/invitation.entity';
 import { User } from 'src/users/entities/user.entity';
 import { UserRole, UserStatus } from 'src/users/enums/user-role.enum';
@@ -18,7 +19,6 @@ import { LATEST_NOTIFICATIONS } from './notification.constants';
 import { NotificationType } from './enums/notification-type.enum';
 
 const READ_RETENTION_DAYS = 60;
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 @Injectable()
 export class NotificationsService {

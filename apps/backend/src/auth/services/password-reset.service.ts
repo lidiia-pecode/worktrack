@@ -54,19 +54,40 @@ export class PasswordResetService {
     return token;
   }
 
+  /** The token while it can still be used, read without using it up. */
+  async findUsableToken(token: string): Promise<PasswordResetToken> {
+    const resetToken = await this.repo.findOne({
+      where: { tokenHash: hashToken(token) },
+    });
+
+    return this.assertUsable(resetToken);
+  }
+
   async consumeToken(
     token: string,
     manager: EntityManager,
   ): Promise<PasswordResetToken> {
     const tokenHash = hashToken(token);
 
-    const resetToken = await manager
-      .getRepository(PasswordResetToken)
-      .createQueryBuilder('resetToken')
-      .setLock('pessimistic_write')
-      .where('resetToken.tokenHash = :tokenHash', { tokenHash })
-      .getOne();
+    const resetToken = this.assertUsable(
+      await manager
+        .getRepository(PasswordResetToken)
+        .createQueryBuilder('resetToken')
+        .setLock('pessimistic_write')
+        .where('resetToken.tokenHash = :tokenHash', { tokenHash })
+        .getOne(),
+    );
 
+    resetToken.usedAt = new Date();
+
+    await manager.getRepository(PasswordResetToken).save(resetToken);
+
+    return resetToken;
+  }
+
+  private assertUsable(
+    resetToken: PasswordResetToken | null,
+  ): PasswordResetToken {
     if (
       !resetToken ||
       resetToken.usedAt ||
@@ -76,10 +97,6 @@ export class PasswordResetService {
         'This reset link has expired or was already used.',
       );
     }
-
-    resetToken.usedAt = new Date();
-
-    await manager.getRepository(PasswordResetToken).save(resetToken);
 
     return resetToken;
   }

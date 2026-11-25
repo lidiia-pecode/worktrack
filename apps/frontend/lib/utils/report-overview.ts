@@ -74,7 +74,7 @@ export const partDaysLabel = (part: ReportPart, range: ReportRange) =>
     })
     .join(", ");
 
-export type ReportDayKind =
+type ReportDayKind =
   | "logged"
   /** Outside the view: another team's day, or after they left. */
   | "closed"
@@ -85,7 +85,7 @@ export type ReportDayKind =
   | "pending";
 
 /** Whether the day is counted yet: only finished days are. */
-export type ReportDayWhen = "past" | "today" | "future";
+type ReportDayWhen = "past" | "today" | "future";
 
 export interface ReportDay {
   date: string;

@@ -1,6 +1,6 @@
 "use client";
 
-import { User } from "@/types";
+import { CurrentUser } from "@/types";
 import { createClient, apiClient, basicClient } from "../core/";
 import { SignInPayload, SignUpPayload } from "@/types/AuthSession";
 
@@ -37,7 +37,7 @@ export const AuthClient = {
   // The route needs a live access token, so an idle tab renews it first.
   logout: () => authApi.post("/logout"),
 
-  me: () => users.get<User>("/me"),
+  me: () => users.get<CurrentUser>("/me"),
 
   changePassword: (data: { currentPassword?: string; newPassword: string }) =>
     authApi.patch<{ success: boolean }>("/password", data),

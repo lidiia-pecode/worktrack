@@ -5,7 +5,7 @@ import { TimeLog } from "@/types";
  * derives its labels here rather than reaching through the relation in each
  * component. One place to update once the API always sends it.
  */
-export type TimelogDisplay = {
+type TimelogDisplay = {
   colorSeed: string;
   projectName: string;
   activityName: string;

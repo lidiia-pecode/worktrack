@@ -212,7 +212,7 @@ describe('PlanningService', () => {
       dataSource.getRepository(ProjectActivity),
       dataSource.getRepository(User),
       stub<ActivitiesService>({
-        findActiveOnlyMany: (ids: string[]) =>
+        findUsersByIds: (ids: string[]) =>
           dataSource.getRepository(Activity).findBy({ id: In(ids) }),
       }),
       users,

@@ -42,6 +42,7 @@ const TODAY = todayISODate(TIME_ZONE);
 const stub = <T>(value: unknown): T => value as T;
 
 describe('InvitationsService acceptance', () => {
+  const hash = jest.fn().mockResolvedValue('hashed');
   let dataSource: DataSource;
   let service: InvitationsService;
   let teamVisibility: TeamVisibilityService;
@@ -145,7 +146,7 @@ describe('InvitationsService acceptance', () => {
       stub({
         createSession: jest.fn().mockResolvedValue({ access_token: '' }),
       }),
-      stub({ hash: jest.fn().mockResolvedValue('hashed') }),
+      stub({ hash }),
       stub({ getOrThrow: () => 'http://app.test' }),
       dataSource,
       teamVisibility,
@@ -177,6 +178,17 @@ describe('InvitationsService acceptance', () => {
   });
 
   describe('completeWithPassword', () => {
+    it('refuses a made-up link before hashing the password', async () => {
+      hash.mockClear();
+
+      await expect(
+        service.completeWithPassword('made-up', 'password123', 'No', 'Body'),
+      ).rejects.toMatchObject({
+        response: { code: UnusableInvitationCode.NOT_FOUND },
+      });
+      expect(hash).not.toHaveBeenCalled();
+    });
+
     it('puts the invited person in the team as a member', async () => {
       const email = `hire-${RUN}@invitations-accept.test`;
       const token = await createInvitation(email, alpha);

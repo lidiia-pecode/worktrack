@@ -5,7 +5,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 
 import { useDebouncedValue } from "./useDebouncedValue";
 
-export type ResourceTab = "active" | "archived";
+type ResourceTab = "active" | "archived";
 
 const TAB_PARAM = "tab";
 const SEARCH_DEBOUNCE_MS = 300;

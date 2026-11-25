@@ -1,3 +1,4 @@
+import { MINUTES_PER_DAY } from 'src/lib/consts';
 import { TrimString } from 'src/lib/decorators';
 import {
   IsEnum,
@@ -15,7 +16,6 @@ import { IsDateWithoutTimeString } from 'src/lib/validators/IsDateWithoutTimeStr
 import { AbsenceType } from '../enums/absence-type.enum';
 
 /** No day is longer; the person's own working day is checked on save. */
-const MAX_ABSENCE_MINUTES = 24 * 60;
 
 export class AbsencePayload {
   @IsOptional()
@@ -35,7 +35,7 @@ export class AbsencePayload {
   @IsOptional()
   @IsInt()
   @Min(1)
-  @Max(MAX_ABSENCE_MINUTES)
+  @Max(MINUTES_PER_DAY)
   minutes?: number | null;
 
   @IsOptional()

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 
-export interface OpenedEntry<Param extends string> {
+interface OpenedEntry<Param extends string> {
   param: Param;
   id: string;
 }

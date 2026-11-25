@@ -6,7 +6,7 @@ import {
 import { formatDuration } from "@/lib/utils/date";
 import { CLOSED_DAY_TEXT } from "@/lib/utils/user";
 
-export type PlanBar = {
+type PlanBar = {
   project: PlanningProject;
   /** The index of its first day among the dates given. */
   start: number;

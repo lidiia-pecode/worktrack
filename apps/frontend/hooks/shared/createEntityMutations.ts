@@ -68,7 +68,7 @@ type CreateEntityMutationsConfig<
   conflictShownInForm?: boolean;
 };
 
-export type EntityMutations<
+type EntityMutations<
   TEntity,
   TCreate,
   TUpdate,

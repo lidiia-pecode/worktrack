@@ -165,7 +165,10 @@ describe('GoogleAuthService.completeGoogleLinkWithPassword', () => {
 
     return new GoogleAuthService(
       stub({ verify: jest.fn().mockResolvedValue(isPasswordValid) }),
-      stub({}),
+      stub({
+        findUserByIdWithCompany: () =>
+          Promise.resolve({ id: 'user-1', passwordHash: 'hash' }),
+      }),
       stub({}),
       stub({
         transaction: (work: (manager: unknown) => Promise<unknown>) =>
@@ -175,7 +178,12 @@ describe('GoogleAuthService.completeGoogleLinkWithPassword', () => {
       stub({}),
       stub({}),
       stub({}),
-      stub({}),
+      stub({
+        findOne: () =>
+          Promise.resolve(
+            consumed ? { userId: 'user-1', googleId: 'g-1' } : null,
+          ),
+      }),
     );
   };
 

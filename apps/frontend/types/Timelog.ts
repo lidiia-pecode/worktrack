@@ -95,7 +95,7 @@ export interface TeamMove {
   direction: "in" | "out";
 }
 
-export interface TeamSummaryDay {
+interface TeamSummaryDay {
   date: string;
   minutes: number;
   billableMinutes: number;

@@ -4,7 +4,13 @@ import {
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
-import { DataSource, EntityManager, Repository } from 'typeorm';
+import {
+  DataSource,
+  EntityManager,
+  IsNull,
+  MoreThan,
+  Repository,
+} from 'typeorm';
 import { randomBytes } from 'crypto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
@@ -204,14 +210,37 @@ export class GoogleAuthService {
     );
   }
 
-  private async consumeGoogleLinkToken(
+  /** The link token while it can still be used, read without using it up. */
+  private async findUsableGoogleLinkToken(
     rawToken: string,
-    manager: EntityManager,
-  ): Promise<{ userId: string; googleId: string }> {
+  ): Promise<GoogleLinkToken> {
     if (!rawToken) {
       throw new BadRequestException('Google link token is required.');
     }
 
+    const token = await this.googleLinkTokenRepository.findOne({
+      where: {
+        tokenHash: hashToken(rawToken),
+        usedAt: IsNull(),
+        expiresAt: MoreThan(new Date()),
+      },
+    });
+
+    if (!token) throw this.unusableGoogleLinkToken();
+
+    return token;
+  }
+
+  private unusableGoogleLinkToken() {
+    return new BadRequestException(
+      'This link has expired or has already been used. Continue with Google again from the sign-in page.',
+    );
+  }
+
+  private async consumeGoogleLinkToken(
+    rawToken: string,
+    manager: EntityManager,
+  ): Promise<{ userId: string; googleId: string }> {
     const tokenHash = hashToken(rawToken);
     const now = new Date();
     const tokenRepository = manager.getRepository(GoogleLinkToken);
@@ -225,11 +254,7 @@ export class GoogleAuthService {
       .andWhere('expires_at > :now', { now })
       .execute();
 
-    if (result.affected !== 1) {
-      throw new BadRequestException(
-        'This link has expired or has already been used. Continue with Google again from the sign-in page.',
-      );
-    }
+    if (result.affected !== 1) throw this.unusableGoogleLinkToken();
 
     const token = await tokenRepository.findOne({ where: { tokenHash } });
     if (!token) {
@@ -244,6 +269,26 @@ export class GoogleAuthService {
     password: string,
     metadata?: SessionMetadata,
   ) {
+    // The link and the password are checked before the transaction, so a
+    // made-up link costs no hash and the transaction doesn't hold its
+    // connection through one. Inside, the link is used up and the account
+    // checked again.
+    const pendingToken = await this.findUsableGoogleLinkToken(rawToken);
+    const pendingUser = await this.usersService.findUserByIdWithCompany(
+      pendingToken.userId,
+    );
+    if (!pendingUser?.passwordHash) {
+      throw new UnauthorizedException('Invalid user account');
+    }
+
+    const isPasswordValid = await this.passwordService.verify(
+      password,
+      pendingUser.passwordHash,
+    );
+    if (!isPasswordValid) {
+      throw createValidationException({ password: ['Incorrect password'] });
+    }
+
     try {
       const user = await this.dataSource.transaction(async (manager) => {
         const { userId, googleId } = await this.consumeGoogleLinkToken(
@@ -256,15 +301,11 @@ export class GoogleAuthService {
           where: { id: userId },
           relations: { company: true },
         });
-        if (!userEntity || !userEntity.passwordHash) {
+        if (!userEntity) {
           throw new UnauthorizedException('Invalid user account');
         }
-
-        const isPasswordValid = await this.passwordService.verify(
-          password,
-          userEntity.passwordHash,
-        );
-        if (!isPasswordValid) {
+        // A password changed since the check above no longer confirms the link.
+        if (userEntity.passwordHash !== pendingUser.passwordHash) {
           throw createValidationException({ password: ['Incorrect password'] });
         }
 

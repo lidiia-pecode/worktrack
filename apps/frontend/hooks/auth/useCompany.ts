@@ -59,14 +59,7 @@ export function useCompany({
   return {
     company: query.data ?? null,
 
-    query: {
-      ...query,
-      isLoading: query.isLoading,
-      isFetching: query.isFetching,
-      isError: query.isError,
-      error: query.error ?? null,
-      refetch: query.refetch,
-    },
+    query,
 
     actions: {
       update,

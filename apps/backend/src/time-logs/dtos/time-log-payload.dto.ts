@@ -1,3 +1,4 @@
+import { MINUTES_PER_DAY } from 'src/lib/consts';
 import { TrimString } from 'src/lib/decorators';
 import {
   IsBoolean,
@@ -26,7 +27,7 @@ export class TimeLogPayload {
   @IsNotEmpty()
   @IsInt()
   @Min(1)
-  @Max(1440)
+  @Max(MINUTES_PER_DAY)
   minutes!: number;
 
   @IsOptional()

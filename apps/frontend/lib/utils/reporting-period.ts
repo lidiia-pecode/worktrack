@@ -10,13 +10,13 @@ import {
 } from "./date";
 
 /** The most months `GET /periods` returns in one request. */
-export const MAX_PERIOD_MONTHS_PER_REQUEST = 36;
+const MAX_PERIOD_MONTHS_PER_REQUEST = 36;
 
 /** How many days a month stays editable after it ends; mirrors the backend's `GRACE_DAYS`. */
 export const GRACE_DAYS = 7;
 
 /** How many months the Periods page lists at a time. */
-export const PERIOD_MONTHS_PER_PAGE = 12;
+const PERIOD_MONTHS_PER_PAGE = 12;
 
 /** The month the company was created in, where the company is. Nothing is reported before it. */
 export function companyFirstMonth(company: Company): string {

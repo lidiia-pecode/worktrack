@@ -43,6 +43,7 @@ import {
 import { findCompanyToday } from 'src/companies/company-today.util';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 import { isWorkingDay, weekendWorkHint } from 'src/capacity/working-days.util';
+import { MINUTES_PER_DAY } from 'src/lib/consts';
 import { formatDay } from 'src/lib/utils/format-day.util';
 import { pageOffset } from 'src/lib/dtos/pagination-query.dto';
 
@@ -788,7 +789,7 @@ export class TimeLogsService {
     const result = await qb.getRawOne<{ total: string | number }>();
     const total = Number(result?.total ?? 0);
 
-    if (total + minutes > 1440) {
+    if (total + minutes > MINUTES_PER_DAY) {
       throw new BadRequestException(
         'Daily time limit exceeded (maximum 24 hours)',
       );

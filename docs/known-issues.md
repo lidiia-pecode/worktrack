@@ -258,13 +258,6 @@ reads it. After 100 companies whose names reduce to the same slug ("Test",
 "test!"), sign-up and rename are refused. The fix drops the column, index and
 retry (a destructive migration), with the seed finding its company another way.
 
-**Two password checks run inside their transaction** — _reliability, low._
-Confirming a Google link with a password, and refusing the current password on
-a reset, check it in the transaction that has just used the one-time token, so
-the connection waits in the one-at-a-time hash queue. It can't deadlock, since
-the check needs no second connection; the fix reads the token and checks the
-password first, then uses the token in the transaction.
-
 **Toasts bring their own colours** — _UX, low._ `<Toaster richColors>`
 (`app/layout.tsx`) draws success and error toasts in sonner's palette, the one
 visible element outside the tokens in `globals.css`, while the
@@ -272,21 +265,10 @@ visible element outside the tokens in `globals.css`, while the
 are used by nothing. The fix themes sonner through the `success`,
 `destructive` and `warning` tokens and drops the unused mappings.
 
-**Small tidy-ups** — _debt, low._
-- The minutes in a day are written four ways (`1440` in the time-log DTO and
-  service, `MAX_ABSENCE_MINUTES`, `MAX_PLAN_MINUTES`), and a day in
-  milliseconds three; one shared constant each.
-- `UsersService.findActiveOnlyMany` and `CompaniesService.findCurrentCompany`
-  only call another method; the `toList` query transform is copied in two DTOs;
-  `isDatabaseConflictError` also matches `23P01`, an exclusion constraint no
-  table has.
-- `migration:run:prod` in the backend's `package.json` is called by nothing.
-- `REFRESH_TOKEN_REUSE_GRACE_MS` takes a duration such as `30s`, not
-  milliseconds; renaming it means changing the host's environment with it.
-- `useAuth` and `useCompany` spread the query result and then set the same
-  fields again, and `useAuth` is typed `User` where `/users/me` answers
-  `CurrentUser`.
-- About 30 names in the frontend are exported and used only in their own file.
+**`REFRESH_TOKEN_REUSE_GRACE_MS` is not in milliseconds** — _debt, low._ It
+takes a duration such as `30s`, as the other token settings do. Renaming it
+means changing the host's environment in the same deploy, or the setting falls
+back to its default unnoticed.
 
 **Accessibility, wording and the tablet width have had no pass of their own**
 — _UX._ Each screen was checked as it was built; nobody has gone through the

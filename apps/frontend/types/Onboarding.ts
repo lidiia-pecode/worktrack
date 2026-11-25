@@ -1,4 +1,4 @@
-export interface OwnerSetupSteps {
+interface OwnerSetupSteps {
   createTeam: boolean;
   createCategory: boolean;
   createActivity: boolean;
@@ -6,7 +6,7 @@ export interface OwnerSetupSteps {
   addProjectPeople: boolean;
 }
 
-export interface OwnerManagerSteps {
+interface OwnerManagerSteps {
   inviteManager: boolean;
   managerJoined: boolean;
   assignManager: boolean;

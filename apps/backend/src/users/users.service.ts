@@ -486,14 +486,6 @@ export class UsersService {
     return users;
   }
 
-  async findActiveOnlyMany(
-    ids: string[],
-    companyId: string,
-    manager?: EntityManager,
-  ): Promise<User[]> {
-    return this.findUsersByIds(ids, companyId, manager);
-  }
-
   async createInvitedUser(
     payload: {
       companyId: string;

@@ -8,8 +8,8 @@ import { useCompany } from "./auth/useCompany";
  * Used until the company settings have loaded, and for the rare case where a
  * company record is missing a value. They mirror the backend column defaults.
  */
-export const DEFAULT_WEEK_START_DAY = WeekDay.MONDAY;
-export const DEFAULT_WORK_HOURS_PER_DAY = 8;
+const DEFAULT_WEEK_START_DAY = WeekDay.MONDAY;
+const DEFAULT_WORK_HOURS_PER_DAY = 8;
 
 /**
  * The company's calendar and capacity settings, in the shape the timesheet needs.

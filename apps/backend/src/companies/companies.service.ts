@@ -145,13 +145,6 @@ export class CompaniesService {
     return repo.save(company);
   }
 
-  async findCurrentCompany(
-    companyId: string,
-    manager?: EntityManager,
-  ): Promise<Company> {
-    return this.findById(companyId, manager);
-  }
-
   async findById(id: string, manager?: EntityManager): Promise<Company> {
     const company = await this.getRepository(manager).findOne({
       where: { id },

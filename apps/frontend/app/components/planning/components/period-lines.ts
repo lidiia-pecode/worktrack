@@ -10,7 +10,7 @@ import {
 /** Beyond this many days, a row sums its days up instead of naming each. */
 const MAX_NAMED_DAYS = 4;
 
-export interface PlannedDay {
+interface PlannedDay {
   date: string;
   minutes: number;
 }

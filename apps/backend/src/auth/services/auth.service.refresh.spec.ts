@@ -130,6 +130,7 @@ describe('AuthService refresh', () => {
     service = new AuthService(
       new PasswordService(),
       stub({
+        findUsableToken: jest.fn().mockResolvedValue({ userId: user.id }),
         consumeToken: jest.fn().mockResolvedValue({ userId: user.id }),
       }),
       tokenService,

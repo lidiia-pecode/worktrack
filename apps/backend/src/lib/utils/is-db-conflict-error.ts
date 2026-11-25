@@ -13,5 +13,5 @@ export function isDatabaseConflictError(
     return false;
   }
   const driverError = error.driverError as PostgresDriverError | undefined;
-  return driverError?.code === '23505' || driverError?.code === '23P01';
+  return driverError?.code === '23505';
 }

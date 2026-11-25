@@ -1,4 +1,5 @@
 import 'reflect-metadata';
+import { UnauthorizedException } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 
 import { UserStatus } from 'src/users/enums/user-role.enum';
@@ -10,12 +11,17 @@ import { AuthService } from './auth.service';
 const stub = <T>(value: unknown): T => value as T;
 
 describe('AuthService.resetPassword', () => {
+  const hash = jest.fn();
+  const findUsableToken = jest.fn().mockResolvedValue({ userId: 'user-1' });
   const updatePassword = jest.fn();
   const createSession = jest.fn();
 
   const service = new AuthService(
-    stub({ hash: jest.fn(), verify: jest.fn() }),
-    stub({ consumeToken: jest.fn().mockResolvedValue({ userId: 'user-1' }) }),
+    stub({ hash, verify: jest.fn() }),
+    stub({
+      findUsableToken,
+      consumeToken: jest.fn().mockResolvedValue({ userId: 'user-1' }),
+    }),
     stub({}),
     stub({ deleteAllForUser: jest.fn(), createSession }),
     stub({
@@ -43,5 +49,18 @@ describe('AuthService.resetPassword', () => {
     });
     expect(updatePassword).not.toHaveBeenCalled();
     expect(createSession).not.toHaveBeenCalled();
+  });
+
+  it('refuses an unusable link before hashing the password', async () => {
+    findUsableToken.mockRejectedValueOnce(
+      new UnauthorizedException(
+        'This reset link has expired or was already used.',
+      ),
+    );
+
+    await expect(
+      service.resetPassword('made-up', 'new-password-1', {}),
+    ).rejects.toThrow('expired or was already used');
+    expect(hash).not.toHaveBeenCalled();
   });
 });
