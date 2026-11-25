@@ -85,7 +85,9 @@ export const CategoryActivityMovesDialog = ({
   );
 
   // Without the other categories, the choice would wrongly offer only archiving.
-  const categoriesFailed = takesOut && activeCategories.isError;
+  // A retry after a failure still counts as checking.
+  const categoriesFailed =
+    takesOut && activeCategories.isError && !activeCategories.isFetching;
   const categoriesReady = !takesOut || activeCategories.query.isSuccess;
 
   const targets = activeCategories.items.filter(

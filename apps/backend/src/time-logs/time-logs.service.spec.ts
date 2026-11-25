@@ -417,6 +417,20 @@ describe('TimeLogsService write scope', () => {
   });
 
   describe('update and delete', () => {
+    it('answers a save with the entry as a list reads it', async () => {
+      const created = await service.create(logFor(member.id), member);
+      const updated = await service.update(
+        created.id,
+        { minutes: 45 },
+        manager,
+      );
+
+      for (const saved of [created, updated]) {
+        expect(saved.projectActivity?.activity?.category).toBeDefined();
+      }
+      expect(updated.updatedBy?.id).toBe(manager.id);
+    });
+
     it("lets an owner change anyone's entry", async () => {
       const id = await existingLogFor(outsider.id);
 

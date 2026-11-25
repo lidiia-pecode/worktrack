@@ -97,23 +97,21 @@ export class CapacityService {
    * The reads below take a transaction's `manager` when one is open: a read
    * through the repositories would wait for a second connection while the
    * transaction holds the first, and enough writes at once would leave the
-   * pool with none to give.
+   * pool with none to give. On that one connection they run one after another.
    */
   async calendarFor(
     companyId: string,
     manager: EntityManager = this.repo.manager,
   ): Promise<CompanyCalendar> {
-    const [company, changes] = await Promise.all([
-      manager.findOne(Company, {
-        where: { id: companyId },
-        select: ['id', 'timezone', 'standardWorkHoursPerDay'],
-      }),
-      manager.find(CompanyStandardDay, {
-        where: { companyId },
-        order: { validFrom: 'ASC' },
-        select: ['validFrom', 'hoursPerDay'],
-      }),
-    ]);
+    const company = await manager.findOne(Company, {
+      where: { id: companyId },
+      select: ['id', 'timezone', 'standardWorkHoursPerDay'],
+    });
+    const changes = await manager.find(CompanyStandardDay, {
+      where: { companyId },
+      order: { validFrom: 'ASC' },
+      select: ['validFrom', 'hoursPerDay'],
+    });
 
     if (!company) throw new NotFoundException('Company not found');
 
@@ -212,16 +210,14 @@ export class CapacityService {
 
     if (userIds.length === 0) return activeDates;
 
-    const [users, inactivePeriods] = await Promise.all([
-      manager.find(User, {
-        where: { companyId, id: In(userIds) },
-        select: ['id', 'createdAt', 'status', 'lastWorkingDay'],
-      }),
-      manager.find(UserInactivePeriod, {
-        where: { companyId, userId: In(userIds) },
-        select: ['userId', 'lastWorkingDay', 'firstDayBack'],
-      }),
-    ]);
+    const users = await manager.find(User, {
+      where: { companyId, id: In(userIds) },
+      select: ['id', 'createdAt', 'status', 'lastWorkingDay'],
+    });
+    const inactivePeriods = await manager.find(UserInactivePeriod, {
+      where: { companyId, userId: In(userIds) },
+      select: ['userId', 'lastWorkingDay', 'firstDayBack'],
+    });
 
     for (const user of users) {
       const inactiveSpells: InactiveSpell[] = inactivePeriods

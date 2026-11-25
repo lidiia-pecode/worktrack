@@ -624,25 +624,23 @@ export class InvitationsService {
       Boolean(id),
     );
 
-    const [hasManager, otherInvitation] = await Promise.all([
-      manager.getRepository(TeamMembership).exists({
-        where: {
-          companyId,
-          teamId,
-          roleInTeam: TeamRole.MANAGER,
-          leftAt: IsNull(),
-        },
-      }),
-      manager.getRepository(Invitation).findOne({
-        where: {
-          companyId,
-          teamId,
-          role: UserRole.MANAGER,
-          status: InvitationStatus.PENDING,
-          ...(ownIds.length ? { id: Not(In(ownIds)) } : {}),
-        },
-      }),
-    ]);
+    const hasManager = await manager.getRepository(TeamMembership).exists({
+      where: {
+        companyId,
+        teamId,
+        roleInTeam: TeamRole.MANAGER,
+        leftAt: IsNull(),
+      },
+    });
+    const otherInvitation = await manager.getRepository(Invitation).findOne({
+      where: {
+        companyId,
+        teamId,
+        role: UserRole.MANAGER,
+        status: InvitationStatus.PENDING,
+        ...(ownIds.length ? { id: Not(In(ownIds)) } : {}),
+      },
+    });
 
     if (hasManager) {
       throw new ConflictException('This team already has a manager');

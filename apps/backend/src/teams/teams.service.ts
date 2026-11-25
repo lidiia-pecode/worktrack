@@ -349,16 +349,16 @@ export class TeamsService {
     teamId: string,
     companyId: string,
   ): Promise<TeamArchiveImpact> {
-    const [openMemberships, pendingInvitationCount] = await Promise.all([
-      manager.getRepository(TeamMembership).find({
-        where: { teamId, companyId, leftAt: IsNull() },
-        relations: ['user'],
-        order: { user: { firstName: 'ASC', lastName: 'ASC' } },
-      }),
-      manager.getRepository(Invitation).count({
+    const openMemberships = await manager.getRepository(TeamMembership).find({
+      where: { teamId, companyId, leftAt: IsNull() },
+      relations: ['user'],
+      order: { user: { firstName: 'ASC', lastName: 'ASC' } },
+    });
+    const pendingInvitationCount = await manager
+      .getRepository(Invitation)
+      .count({
         where: { teamId, companyId, status: InvitationStatus.PENDING },
-      }),
-    ]);
+      });
 
     return { openMemberships, pendingInvitationCount };
   }
@@ -552,21 +552,19 @@ export class TeamsService {
         );
       }
       const membershipRepo = manager.getRepository(TeamMembership);
-      const [currentLead, ownMembership] = await Promise.all([
-        membershipRepo.findOne({
-          where: {
-            companyId,
-            teamId,
-            roleInTeam: TeamRole.MANAGER,
-            leftAt: IsNull(),
-          },
-          lock: { mode: 'pessimistic_write' },
-        }),
-        membershipRepo.findOne({
-          where: { companyId, userId: dto.userId, leftAt: IsNull() },
-          lock: { mode: 'pessimistic_write' },
-        }),
-      ]);
+      const currentLead = await membershipRepo.findOne({
+        where: {
+          companyId,
+          teamId,
+          roleInTeam: TeamRole.MANAGER,
+          leftAt: IsNull(),
+        },
+        lock: { mode: 'pessimistic_write' },
+      });
+      const ownMembership = await membershipRepo.findOne({
+        where: { companyId, userId: dto.userId, leftAt: IsNull() },
+        lock: { mode: 'pessimistic_write' },
+      });
 
       if (currentLead?.userId === dto.userId) {
         throw new BadRequestException('They already lead this team');

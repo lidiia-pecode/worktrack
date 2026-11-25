@@ -256,7 +256,7 @@ each; no secret is shared between environments.
 | Render | The backend, one Docker service | Every required variable in `apps/backend/.env.sample` (see *Environment variables*) | — |
 | Neon | The database | Its URL, with `sslmode=verify-full`, on Render and in `.env.neon` | — |
 | Google Cloud | The OAuth client for Google sign-in | `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`; the four `GOOGLE_*_CALLBACK_URL` values, on the frontend's domain, registered as its redirect URIs | Signing in, signing up, linking and accepting an invitation with Google fail |
-| Resend | Outgoing email | `RESEND_API_KEY`, and a `MAIL_FROM` on a domain verified there | Invitations and password-reset emails are not sent |
+| Resend | Outgoing email | `RESEND_API_KEY` and `MAIL_FROM`. The stand still sends from Resend's test sender, which delivers only to the Resend account's own address; other recipients need a domain verified there ([known issues](./known-issues.md)) | Invitations and password-reset emails are not sent |
 
 Moving the frontend to another domain means updating `FRONTEND_URL` on Render,
 the four callback URLs on Render and in the Google client, and the URLs in the

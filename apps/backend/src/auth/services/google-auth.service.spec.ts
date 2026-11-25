@@ -134,8 +134,15 @@ describe('GoogleAuthService.validateGoogleLogin', () => {
 });
 
 describe('GoogleAuthService.completeGoogleLinkWithPassword', () => {
-  /** A link token that `consumed` says was or was not still usable. */
-  const serviceFor = (consumed: boolean, isPasswordValid = true) => {
+  /**
+   * A link token that `consumed` says was or was not still usable, and the
+   * password hash the account holds once the transaction reads it.
+   */
+  const serviceFor = (
+    consumed: boolean,
+    isPasswordValid = true,
+    hashInTransaction = 'hash',
+  ) => {
     const tokenQuery = {
       update: () => tokenQuery,
       set: () => tokenQuery,
@@ -153,7 +160,7 @@ describe('GoogleAuthService.completeGoogleLinkWithPassword', () => {
         findOne: () =>
           Promise.resolve({
             id: 'user-1',
-            passwordHash: 'hash',
+            passwordHash: hashInTransaction,
             status: UserStatus.ACTIVE,
           }),
       },
@@ -192,6 +199,16 @@ describe('GoogleAuthService.completeGoogleLinkWithPassword', () => {
 
     await expect(
       service.completeGoogleLinkWithPassword('token', 'wrong'),
+    ).rejects.toMatchObject({
+      response: { errors: { password: ['Incorrect password'] } },
+    });
+  });
+
+  it('refuses the link when the password changed after it was checked', async () => {
+    const service = serviceFor(true, true, 'changed-hash');
+
+    await expect(
+      service.completeGoogleLinkWithPassword('token', 'Password1'),
     ).rejects.toMatchObject({
       response: { errors: { password: ['Incorrect password'] } },
     });
