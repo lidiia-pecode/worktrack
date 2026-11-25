@@ -34,7 +34,8 @@ export const AuthClient = {
 
   login: (data: SignInPayload) => auth.post("/signin", data),
 
-  logout: () => auth.post("/logout"),
+  // The route needs a live access token, so an idle tab renews it first.
+  logout: () => authApi.post("/logout"),
 
   me: () => users.get<User>("/me"),
 

@@ -29,7 +29,6 @@ describe('password sign-in', () => {
       stub({}),
       stub({}),
       stub({}),
-      stub({}),
       stub<UsersService>({
         findByEmailWithCompany: jest.fn().mockResolvedValue(deactivated),
       }),

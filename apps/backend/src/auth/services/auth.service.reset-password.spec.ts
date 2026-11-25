@@ -17,7 +17,6 @@ describe('AuthService.resetPassword', () => {
     stub({ hash: jest.fn(), verify: jest.fn() }),
     stub({ consumeToken: jest.fn().mockResolvedValue({ userId: 'user-1' }) }),
     stub({}),
-    stub({}),
     stub({ deleteAllForUser: jest.fn(), createSession }),
     stub({
       findUserByIdWithCompany: jest.fn().mockResolvedValue({

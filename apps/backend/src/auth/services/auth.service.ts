@@ -24,7 +24,6 @@ import { PasswordService } from './password.service';
 import { SessionService } from './session.service';
 import { TokenService } from './token.service';
 import { PasswordResetService } from './password-reset.service';
-import { MailService } from 'src/mail/mail.service';
 import { ConfigService } from '@nestjs/config';
 
 @Injectable()
@@ -32,7 +31,6 @@ export class AuthService {
   constructor(
     private readonly passwordService: PasswordService,
     private readonly passwordResetService: PasswordResetService,
-    private readonly mailService: MailService,
     private readonly tokenService: TokenService,
     private readonly sessionService: SessionService,
     private readonly usersService: UsersService,
@@ -307,6 +305,10 @@ export class AuthService {
     newPassword: string,
     metadata: SessionMetadata,
   ) {
+    // Hashed before the transaction, which would otherwise hold its
+    // connection through the slow hash.
+    const passwordHash = await this.passwordService.hash(newPassword);
+
     return this.dataSource.transaction(async (manager) => {
       const resetToken = await this.passwordResetService.consumeToken(
         token,
@@ -339,8 +341,6 @@ export class AuthService {
           );
         }
       }
-
-      const passwordHash = await this.passwordService.hash(newPassword);
 
       await this.usersService.updatePassword(
         user.id,

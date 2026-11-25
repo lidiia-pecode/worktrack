@@ -1,6 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
+import {
+  EntityManager,
+  In,
+  LessThanOrEqual,
+  MoreThanOrEqual,
+  Repository,
+} from 'typeorm';
 
 import { Absence } from 'src/absences/entities/absence.entity';
 import { AbsenceType } from 'src/absences/enums/absence-type.enum';
@@ -149,6 +155,7 @@ export class ExpectedHoursService {
     companyId: string,
     userId: string,
     ranges: { start: string; end: string }[],
+    manager?: EntityManager,
   ): Promise<Pick<ExpectedMinutes, 'total' | 'byDate'>[]> {
     if (ranges.length === 0) return [];
     ranges.forEach(({ start, end }) => assertDateRange(start, end));
@@ -158,6 +165,8 @@ export class ExpectedHoursService {
       [userId],
       ranges[0].start,
       ranges[ranges.length - 1].end,
+      undefined,
+      manager,
     );
     const days = sums.get(userId)?.availableByDate ?? [];
 
@@ -217,11 +226,13 @@ export class ExpectedHoursService {
     from: string,
     to: string,
     leaveOut?: Map<string, DaySpan[]>,
+    // A transaction's, when one is open (see `CapacityService.calendarFor`).
+    manager?: EntityManager,
   ): Promise<Map<string, ShareSums>> {
     const sums = new Map<string, ShareSums>();
     if (userIds.length === 0) return sums;
 
-    const calendar = await this.capacity.calendarFor(companyId);
+    const calendar = await this.capacity.calendarFor(companyId, manager);
     const today = todayISODate(calendar.timezone);
     const [timelines, activeDates, absencesByUser] = await Promise.all([
       this.capacity.timelinesFor(
@@ -229,9 +240,15 @@ export class ExpectedHoursService {
         userIds,
         to,
         calendar.defaultTimeline,
+        manager,
       ),
-      this.capacity.activeDatesFor(companyId, userIds, calendar.timezone),
-      this.absencesIn(companyId, userIds, from, to),
+      this.capacity.activeDatesFor(
+        companyId,
+        userIds,
+        calendar.timezone,
+        manager,
+      ),
+      this.absencesIn(companyId, userIds, from, to, manager),
     ]);
 
     for (const userId of userIds) {
@@ -305,8 +322,15 @@ export class ExpectedHoursService {
     userIds: string[],
     from: string,
     to: string,
+    manager?: EntityManager,
   ): Promise<Map<string, Map<string, number>>> {
-    const absences = await this.absencesIn(companyId, userIds, from, to);
+    const absences = await this.absencesIn(
+      companyId,
+      userIds,
+      from,
+      to,
+      manager,
+    );
     const byUser = new Map<string, Map<string, number>>();
 
     absences.forEach((rows, userId) => {
@@ -325,8 +349,9 @@ export class ExpectedHoursService {
     userIds: string[],
     from: string,
     to: string,
+    manager: EntityManager = this.absenceRepo.manager,
   ): Promise<Map<string, AbsenceSpan[]>> {
-    const rows = await this.absenceRepo.find({
+    const rows = await manager.find(Absence, {
       where: {
         companyId,
         userId: In(userIds),

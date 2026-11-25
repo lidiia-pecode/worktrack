@@ -1,5 +1,4 @@
 import { Activity, PaginatedResponse, SearchablePaginationParams } from ".";
-import { Company } from "./Company";
 import {
   ActCategoryStatus,
   ActiveActivitiesAction,
@@ -22,7 +21,6 @@ export interface ActivityCategory {
   status: ActCategoryStatus;
   createdAt: string;
   updatedAt: string;
-  company?: Company;
   activities?: Activity[];
 }
 

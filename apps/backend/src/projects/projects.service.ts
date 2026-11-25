@@ -209,6 +209,7 @@ export class ProjectsService {
       [...idsToAdd, ...removalCandidates],
       user,
       { includeSelf: true },
+      manager,
     );
 
     if (idsToAdd.some((id) => !assignable.has(id))) {
@@ -411,11 +412,13 @@ export class ProjectsService {
     userId: string,
     user: AuthUser,
     message: string,
+    manager: EntityManager,
   ): Promise<void> {
     const assignable = await this.teamVisibility.filterVisibleUserIds(
       [userId],
       user,
       { includeSelf: true },
+      manager,
     );
 
     if (!assignable.has(userId)) throw new ForbiddenException(message);
@@ -649,6 +652,7 @@ export class ProjectsService {
         userId,
         user,
         'You can only assign yourself and users in teams you manage',
+        manager,
       );
       if (await this.isMember(project.id, userId, manager)) return;
 
@@ -680,6 +684,7 @@ export class ProjectsService {
         userId,
         user,
         'You can only remove yourself and users in teams you manage',
+        manager,
       );
       if (!(await this.isMember(project.id, userId, manager))) return;
 

@@ -6,6 +6,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import {
   Between,
+  EntityManager,
   In,
   LessThanOrEqual,
   MoreThan,
@@ -87,20 +88,27 @@ export class CapacityService {
     private readonly companyRepo: Repository<Company>,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
-    @InjectRepository(UserInactivePeriod)
-    private readonly inactivePeriodRepo: Repository<UserInactivePeriod>,
     @InjectRepository(CompanyStandardDay)
     private readonly standardDayRepo: Repository<CompanyStandardDay>,
     private readonly periodLocks: PeriodLocksService,
   ) {}
 
-  async calendarFor(companyId: string): Promise<CompanyCalendar> {
+  /**
+   * The reads below take a transaction's `manager` when one is open: a read
+   * through the repositories would wait for a second connection while the
+   * transaction holds the first, and enough writes at once would leave the
+   * pool with none to give.
+   */
+  async calendarFor(
+    companyId: string,
+    manager: EntityManager = this.repo.manager,
+  ): Promise<CompanyCalendar> {
     const [company, changes] = await Promise.all([
-      this.companyRepo.findOne({
+      manager.findOne(Company, {
         where: { id: companyId },
         select: ['id', 'timezone', 'standardWorkHoursPerDay'],
       }),
-      this.standardDayRepo.find({
+      manager.find(CompanyStandardDay, {
         where: { companyId },
         order: { validFrom: 'ASC' },
         select: ['validFrom', 'hoursPerDay'],
@@ -127,14 +135,16 @@ export class CapacityService {
     userIds: string[],
     until: string,
     defaultTimeline?: CapacityTimeline,
+    manager: EntityManager = this.repo.manager,
   ): Promise<Map<string, CapacityTimeline>> {
     const fallback =
-      defaultTimeline ?? (await this.calendarFor(companyId)).defaultTimeline;
+      defaultTimeline ??
+      (await this.calendarFor(companyId, manager)).defaultTimeline;
     const timelines = new Map<string, CapacityTimeline>();
 
     if (userIds.length === 0) return timelines;
 
-    const rows = await this.repo.find({
+    const rows = await manager.find(UserCapacity, {
       where: {
         companyId,
         userId: In(userIds),
@@ -165,8 +175,15 @@ export class CapacityService {
     companyId: string,
     userId: string,
     until: string,
+    manager?: EntityManager,
   ): Promise<CapacityTimeline> {
-    const timelines = await this.timelinesFor(companyId, [userId], until);
+    const timelines = await this.timelinesFor(
+      companyId,
+      [userId],
+      until,
+      undefined,
+      manager,
+    );
     return timelines.get(userId)!;
   }
 
@@ -189,17 +206,18 @@ export class CapacityService {
     companyId: string,
     userIds: string[],
     timezone: string,
+    manager: EntityManager = this.repo.manager,
   ): Promise<Map<string, ActiveDates>> {
     const activeDates = new Map<string, ActiveDates>();
 
     if (userIds.length === 0) return activeDates;
 
     const [users, inactivePeriods] = await Promise.all([
-      this.userRepo.find({
+      manager.find(User, {
         where: { companyId, id: In(userIds) },
         select: ['id', 'createdAt', 'status', 'lastWorkingDay'],
       }),
-      this.inactivePeriodRepo.find({
+      manager.find(UserInactivePeriod, {
         where: { companyId, userId: In(userIds) },
         select: ['userId', 'lastWorkingDay', 'firstDayBack'],
       }),
@@ -235,16 +253,18 @@ export class CapacityService {
    * there is always a mistake. Days before they left stay open to correction.
    */
   async assertEmployedOn(
+    manager: EntityManager,
     companyId: string,
     userId: string,
     from: string,
     to = from,
   ): Promise<void> {
-    const { timezone } = await this.calendarFor(companyId);
+    const { timezone } = await this.calendarFor(companyId, manager);
     const activeDates = await this.activeDatesFor(
       companyId,
       [userId],
       timezone,
+      manager,
     );
     const overlapping = activeDates
       .get(userId)

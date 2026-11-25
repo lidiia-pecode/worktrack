@@ -4,7 +4,6 @@ import {
   SearchablePaginationParams,
 } from ".";
 import { Activity } from "./Activities";
-import { Company } from "./Company";
 import { ProjectStatus } from "./enums";
 import { AssignableUser } from "./User";
 
@@ -24,7 +23,6 @@ export interface Project {
   status: ProjectStatus;
   createdAt: string;
   updatedAt: string;
-  company?: Company;
   projectActivities?: ProjectActivity[];
   /**
    * Only returned for a single project, never in list results, and scoped to

@@ -50,7 +50,7 @@ export const envValidationSchema = Joi.object({
 
   GOOGLE_TOKEN_EXPIRES_IN: Joi.string()
     .pattern(/^\d+[smhd]$/)
-    .default('1m'),
+    .default('5m'),
 
   REFRESH_TOKEN_HASH_SECRET: Joi.string().min(32).required(),
 

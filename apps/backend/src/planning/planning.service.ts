@@ -519,7 +519,7 @@ export class PlanningService {
     return this.dataSource.transaction(async (manager) => {
       // Reach first, so nobody outside it is locked or described; it is
       // checked again under the lock.
-      await this.daysOutsideReach(userId, user, startDate, endDate);
+      await this.daysOutsideReach(userId, user, startDate, endDate, manager);
       await lockUser(manager, userId, user.companyId);
 
       const { plannedDays, problems, writes } = await this.resolvePeriod(
@@ -589,6 +589,7 @@ export class PlanningService {
       user,
       startDate,
       endDate,
+      manager,
     );
     await this.assertActiveUser(userId, user.companyId, manager);
 
@@ -605,7 +606,13 @@ export class PlanningService {
     );
 
     const company = await this.getCompany(user.companyId, manager);
-    const weeks = await this.periodWeeks(company, userId, startDate, endDate);
+    const weeks = await this.periodWeeks(
+      company,
+      userId,
+      startDate,
+      endDate,
+      manager,
+    );
 
     const workingDays = weeks
       .flatMap((week) => week.workingDays)
@@ -630,6 +637,7 @@ export class PlanningService {
       [userId],
       startDate,
       endDate,
+      manager,
     );
     const dayLimitOn = await this.dayLimitsFor(
       company.id,
@@ -637,6 +645,7 @@ export class PlanningService {
       startDate,
       endDate,
       partAbsences,
+      manager,
     );
     const partAbsenceOn = partAbsences.get(userId) ?? new Map<string, number>();
     // A partly absent day takes the lines in what its plans on other
@@ -695,10 +704,10 @@ export class PlanningService {
       // Refuses a range with no day in reach before anyone is locked, and
       // again under the lock; the delete keeps to the days in reach. A
       // deactivated person's leftover plans can still be cleared.
-      await this.daysOutsideReach(userId, user, startDate, endDate);
+      await this.daysOutsideReach(userId, user, startDate, endDate, manager);
       await lockUser(manager, userId, user.companyId);
       await this.lockProject(manager, projectId, user.companyId);
-      await this.daysOutsideReach(userId, user, startDate, endDate);
+      await this.daysOutsideReach(userId, user, startDate, endDate, manager);
       await this.assertPeriodNotLocked(
         manager,
         user.companyId,
@@ -773,13 +782,20 @@ export class PlanningService {
     user: AuthUser,
     startDate: string,
     endDate: string,
+    manager: EntityManager,
   ): Promise<DaySpan[]> {
     if (user.role === UserRole.EMPLOYEE) {
       throw new ForbiddenException('Employees cannot change planning');
     }
 
     const range = { from: startDate, to: endDate };
-    const inView = await this.teamVisibility.daysInView(user, [userId], range);
+    const inView = await this.teamVisibility.daysInView(
+      user,
+      [userId],
+      range,
+      undefined,
+      manager,
+    );
     const { outside } = inView.get(userId)!;
 
     // Not one day in reach: refused outright, rather than an empty save.
@@ -793,6 +809,7 @@ export class PlanningService {
         user,
         PLAN_WORDING,
         range,
+        manager,
       );
     }
 
@@ -923,15 +940,17 @@ export class PlanningService {
     from: string,
     until: string,
     knownPartAbsences?: Map<string, Map<string, number>>,
+    manager?: EntityManager,
   ): Promise<DayLimitOn> {
     const [timelines, partAbsences] = await Promise.all([
-      this.capacity.timelinesFor(companyId, userIds, until),
+      this.capacity.timelinesFor(companyId, userIds, until, undefined, manager),
       knownPartAbsences ??
         this.expectedHours.partAbsenceMinutesFor(
           companyId,
           userIds,
           from,
           until,
+          manager,
         ),
     ]);
 
@@ -953,6 +972,7 @@ export class PlanningService {
     userId: string,
     startDate: string,
     endDate: string,
+    manager: EntityManager,
   ): Promise<PeriodWeek[]> {
     const ranges: { start: string; end: string }[] = [];
     for (
@@ -967,6 +987,7 @@ export class PlanningService {
       company.id,
       userId,
       ranges,
+      manager,
     );
 
     return ranges.map(({ start, end }, index) => ({

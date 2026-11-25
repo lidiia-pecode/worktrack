@@ -32,9 +32,7 @@ export class TeamMembership {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
-  /**
-   * Denormalized tenant ID to enable efficient Row-Level Security (RLS) policies.
-   */
+  /** Denormalized, so tenant filters need no join to the team. */
   @Column({
     type: 'uuid',
     name: 'company_id',

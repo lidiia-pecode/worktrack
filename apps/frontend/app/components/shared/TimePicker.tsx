@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { cn } from "@/lib/utils/cn";
 
 import { NumberStepper } from "./inputs/NumberStepper";
@@ -179,7 +180,10 @@ const TimeField = ({
               e.currentTarget.blur();
               return;
             }
-            commit(e.currentTarget.value);
+            // Rendered before the click, so a form whose save reads values
+            // from its last render saves the typed one, not the one before.
+            const typed = e.currentTarget.value;
+            flushSync(() => commit(typed));
             // Pressing the form's own button, so a disabled or busy save
             // stays as it is, as with a click.
             document

@@ -966,10 +966,7 @@ describe('ExpectedHoursService', () => {
     });
 
     it('reads the company once per call', async () => {
-      const companyReads = jest.spyOn(
-        dataSource.getRepository(Company),
-        'findOne',
-      );
+      const findOne = jest.spyOn(dataSource.manager, 'findOne');
 
       await service.expectedFor(
         companyId,
@@ -977,8 +974,10 @@ describe('ExpectedHoursService', () => {
         MONDAY,
         SUNDAY,
       );
-      const reads = companyReads.mock.calls.length;
-      companyReads.mockRestore();
+      const reads = findOne.mock.calls.filter(
+        ([entity]) => entity === Company,
+      ).length;
+      findOne.mockRestore();
 
       expect(reads).toBe(1);
     });

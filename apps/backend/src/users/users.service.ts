@@ -808,7 +808,7 @@ export class UsersService {
     user: User,
     lastWorkingDay: string,
   ): Promise<void> {
-    const { timezone } = await this.capacity.calendarFor(user.companyId);
+    const { timezone } = await this.capacity.calendarFor(user.companyId, man);
     const today = todayISODate(timezone);
     const joinedOn = isoDateIn(user.createdAt, timezone);
 
@@ -851,7 +851,7 @@ export class UsersService {
     user: User,
     firstDayBack: string,
   ): Promise<void> {
-    const { timezone } = await this.capacity.calendarFor(user.companyId);
+    const { timezone } = await this.capacity.calendarFor(user.companyId, man);
     const today = todayISODate(timezone);
     const isBackWithoutAGapToday =
       user.lastWorkingDay === today && firstDayBack === addDays(today, 1);

@@ -397,6 +397,25 @@ describe('TimeLogsService write scope', () => {
     });
   });
 
+  describe('many saves at once', () => {
+    // More than pg's default pool of ten: each save holds a connection for
+    // its transaction, so a check that asked the pool for a second one would
+    // leave every save waiting for ever.
+    const MORE_SAVES_THAN_THE_POOL_HOLDS = 12;
+
+    it('all finish, one after another, for the same person', async () => {
+      const saves = await Promise.allSettled(
+        Array.from({ length: MORE_SAVES_THAN_THE_POOL_HOLDS }, () =>
+          service.create(logFor(member.id), member),
+        ),
+      );
+
+      expect(saves.filter((save) => save.status === 'fulfilled')).toHaveLength(
+        MORE_SAVES_THAN_THE_POOL_HOLDS,
+      );
+    });
+  });
+
   describe('update and delete', () => {
     it("lets an owner change anyone's entry", async () => {
       const id = await existingLogFor(outsider.id);

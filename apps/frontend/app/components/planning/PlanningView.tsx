@@ -18,6 +18,7 @@ import {
   getMonthRange,
   getWeekDates,
   getWeekEnd,
+  getWeekStart,
   isWeekend,
   shiftISODate,
   toISODate,
@@ -235,11 +236,17 @@ export const PlanningView = ({ role, viewerId }: PlanningViewProps) => {
     .flat()
     .every((date) => isLocked(toISODate(date)));
   // Plan a period from the month opens on it; its Week button goes to this
-  // week when the month holds today, or else to the month's first week.
+  // week when the month holds today, or else to the month's first week. The
+  // dialog gets the whole working week, not the month's part of it, so its
+  // arrows step through full weeks.
+  const periodMonthWeek =
+    monthWeeks.find((week) =>
+      week.some((date) => toISODate(date) === todayIso),
+    ) ?? monthWeeks[0];
   const periodWeekDates = isMonth
-    ? (monthWeeks.find((week) =>
-        week.some((date) => toISODate(date) === todayIso),
-      ) ?? monthWeeks[0])
+    ? getWeekDates(getWeekStart(periodMonthWeek[0], weekStartDay)).filter(
+        (date) => !isWeekend(date),
+      )
     : workingDates;
   const pickUnit = (next: "week" | "month") => {
     if (next === unit) return;

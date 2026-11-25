@@ -56,9 +56,6 @@ const archivedEntry: TimeLog = {
   updatedAt: "2026-10-12T09:00:00Z",
   projectActivity: {
     id: "pair-1",
-    companyId: "company-1",
-    projectId: "project-1",
-    activityId: "activity-1",
     isActive: true,
     createdAt: "2026-01-01T00:00:00Z",
     updatedAt: "2026-01-01T00:00:00Z",

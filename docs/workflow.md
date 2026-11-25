@@ -244,6 +244,24 @@ what keeps auth cookies on the frontend's domain, and it is why the four Google
 callback URLs point at the frontend's proxy path rather than at the backend. It
 is also why `BACKEND_URL` must stay out of anything the browser loads.
 
+### Accounts and services
+
+The stand depends on six outside accounts. A new owner creates their own of
+each; no secret is shared between environments.
+
+| Service | What lives there | What it needs | Without it |
+| :--- | :--- | :--- | :--- |
+| GitHub | The repository, CI and the "Protect main" ruleset | The `Frontend`, `Backend` and `Vercel` required checks (see *CI*) | — |
+| Vercel | The frontend and its previews | Connected to the repository; `BACKEND_URL` for Production and Preview | The required `Vercel` check never reports, so no pull request can merge |
+| Render | The backend, one Docker service | Every required variable in `apps/backend/.env.sample` (see *Environment variables*) | — |
+| Neon | The database | Its URL, with `sslmode=verify-full`, on Render and in `.env.neon` | — |
+| Google Cloud | The OAuth client for Google sign-in | `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`; the four `GOOGLE_*_CALLBACK_URL` values, on the frontend's domain, registered as its redirect URIs | Signing in, signing up, linking and accepting an invitation with Google fail |
+| Resend | Outgoing email | `RESEND_API_KEY`, and a `MAIL_FROM` on a domain verified there | Invitations and password-reset emails are not sent |
+
+Moving the frontend to another domain means updating `FRONTEND_URL` on Render,
+the four callback URLs on Render and in the Google client, and the URLs in the
+table above.
+
 ### On a pull request
 
 Vercel builds a preview of the frontend and comments the URL on the PR. Its

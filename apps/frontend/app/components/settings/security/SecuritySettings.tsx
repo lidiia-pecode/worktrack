@@ -20,6 +20,11 @@ import { useAuth } from "@/hooks/auth/useAuth";
 import { useReportDirty } from "@/hooks/useReportDirty";
 import { User } from "@/types";
 import { GOOGLE_LINK_URL } from "@/lib/constants";
+import {
+  UNAUTHORIZED,
+  handleSessionExpired,
+  refreshSession,
+} from "@/lib/api/core";
 
 export type SignInMethods = Pick<
   User,
@@ -44,7 +49,13 @@ export const SecuritySettings = ({
 
   const { email, hasPassword, googleLinked: isGoogleLinked } = user ?? signIn;
 
-  const handleGoogleLink = () => {
+  // The link route is a page load, which can't renew an access token that
+  // expired while the tab sat idle, so the session is renewed before it.
+  const handleGoogleLink = async () => {
+    if ((await refreshSession()) === UNAUTHORIZED) {
+      handleSessionExpired();
+      return;
+    }
     window.location.href = GOOGLE_LINK_URL;
   };
 

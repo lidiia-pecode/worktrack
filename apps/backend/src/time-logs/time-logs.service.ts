@@ -332,18 +332,19 @@ export class TimeLogsService {
   }
 
   // ==========================================
-  // WRITE (Optimized & Deadlock-free)
+  // WRITE
   // ==========================================
 
   async create(payload: TimeLogPayload, user: AuthUser): Promise<TimeLog> {
     const ownerId = payload.userId ?? user.id;
     await this.assertCanWriteFor(ownerId, user, payload.date);
 
-    return this.dataSource.transaction(async (manager) => {
+    const saved = await this.dataSource.transaction(async (manager) => {
       await lockUser(manager, ownerId, user.companyId);
       await this.assertDateNotLocked(manager, user.companyId, payload.date);
       await this.assertNotFuture(manager, user.companyId, payload.date);
       await this.capacity.assertEmployedOn(
+        manager,
         user.companyId,
         ownerId,
         payload.date,
@@ -391,6 +392,8 @@ export class TimeLogsService {
 
       return manager.save(entity);
     });
+
+    return this.getById(saved.id, user);
   }
 
   async update(
@@ -400,7 +403,7 @@ export class TimeLogsService {
   ): Promise<TimeLog> {
     const ownerId = await this.resolveWritableOwner(id, user, payload.date);
 
-    return this.dataSource.transaction(async (manager) => {
+    await this.dataSource.transaction(async (manager) => {
       await lockUser(manager, ownerId, user.companyId);
 
       const log = await this.getLogForUpdate(id, user.companyId, manager);
@@ -415,6 +418,7 @@ export class TimeLogsService {
       if (payload.date && payload.date !== log.date) {
         await this.assertDateNotLocked(manager, user.companyId, payload.date);
         await this.capacity.assertEmployedOn(
+          manager,
           user.companyId,
           ownerId,
           payload.date,
@@ -456,8 +460,12 @@ export class TimeLogsService {
         id,
       );
 
-      return manager.save(TimeLog, log);
+      await manager.save(TimeLog, log);
     });
+
+    // Read back as a list reads it, so a saved entry and a loaded one have the
+    // same fields, its activity and who changed it included.
+    return this.getById(id, user);
   }
 
   async delete(id: string, user: AuthUser): Promise<{ success: boolean }> {

@@ -218,6 +218,10 @@ export class InvitationsService {
     lastName: string,
     metadata?: SessionMetadata,
   ) {
+    // Hashed before the transaction, which would otherwise hold its
+    // connection through the slow hash.
+    const passwordHash = await this.passwordService.hash(password);
+
     const user = await this.dataSource.transaction(async (manager) => {
       const userRepository = manager.getRepository(User);
 
@@ -232,8 +236,6 @@ export class InvitationsService {
       if (existingUser) {
         throw new ConflictException('A user with this email already exists');
       }
-
-      const passwordHash = await this.passwordService.hash(password);
 
       const user = await this.usersService.createInvitedUser(
         {
@@ -460,7 +462,10 @@ export class InvitationsService {
       ...(manager && { lock: { mode: 'pessimistic_write' as const } }),
     });
 
-    const visibleTeamIds = await this.teamVisibility.getVisibleTeamIds(user);
+    const visibleTeamIds = await this.teamVisibility.getVisibleTeamIds(
+      user,
+      manager,
+    );
 
     if (!invitation || !this.isInScope(invitation, visibleTeamIds)) {
       throw new NotFoundException('Invitation not found');

@@ -4,7 +4,7 @@ import { handleSessionExpired } from "./handle-session-expired";
 import { parseJsonSafe } from "./parse-json-safe";
 import { refreshSession } from "./refresh-session";
 
-const UNAUTHORIZED = 401;
+export const UNAUTHORIZED = 401;
 const SERVICE_UNAVAILABLE = 503;
 
 let refreshPromise: Promise<number | null> | null = null;
