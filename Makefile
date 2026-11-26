@@ -1,4 +1,5 @@
-COMPOSE = docker-compose -f docker-compose.dev.yml
+# The `docker compose` plugin where it is installed, else the standalone `docker-compose`.
+COMPOSE := $(shell docker compose version >/dev/null 2>&1 && echo "docker compose" || echo docker-compose) -f docker-compose.dev.yml
 
 # Postgres runs in Docker; the backend and frontend run on this machine.
 db:

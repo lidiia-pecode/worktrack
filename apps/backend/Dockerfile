@@ -2,7 +2,7 @@
 #   docker build -f apps/backend/Dockerfile -t worktrack-backend .
 
 # --- build ----------------------------------------------------------------
-FROM node:22-alpine AS build
+FROM node:24-alpine AS build
 
 WORKDIR /repo
 
@@ -15,7 +15,7 @@ COPY apps/backend apps/backend
 RUN npm run build --workspace=apps/backend
 
 # --- runtime --------------------------------------------------------------
-FROM node:22-alpine AS runtime
+FROM node:24-alpine AS runtime
 
 ENV NODE_ENV=production
 WORKDIR /repo

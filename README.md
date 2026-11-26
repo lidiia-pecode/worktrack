@@ -42,11 +42,10 @@ worktrack/
 
 ### Prerequisites
 
-- Node.js 22 (see `.nvmrc`) and npm
-- Docker with Docker Compose, for PostgreSQL. The Makefile calls the
-  `docker-compose` command; if you only have the `docker compose` plugin,
-  change the first line of the `Makefile` to match. On macOS with colima,
-  2 CPUs and 2 GB are plenty: `colima start --cpu 2 --memory 2`
+- Node.js 24 (see `.nvmrc`) and npm
+- Docker with Docker Compose, for PostgreSQL. The Makefile uses the
+  `docker compose` plugin, or the standalone `docker-compose` when the plugin
+  is missing.
 
 ### Installation
 

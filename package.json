@@ -6,7 +6,7 @@
     "apps/frontend"
   ],
   "engines": {
-    "node": "22.x"
+    "node": "24.x"
   },
   "scripts": {
     "dev": "concurrently --names backend,frontend --prefix-colors blue,magenta \"npm:backend\" \"npm:frontend\"",
