@@ -1,3 +1,4 @@
+import { MINUTES_PER_DAY } from 'src/lib/consts';
 import { formatDay } from 'src/lib/utils/format-day.util';
 import { formatMinutes } from 'src/lib/utils/format-minutes.util';
 
@@ -17,7 +18,7 @@ export interface PeriodWeek {
  */
 export const PLAN_MINUTES_STEP = 15;
 /** No plan can be longer than a day. */
-export const MAX_PLAN_MINUTES = 24 * 60;
+export const MAX_PLAN_MINUTES = MINUTES_PER_DAY;
 /** A day holds no more projects than quarter hours, so no period plan lists more. */
 export const MAX_PERIOD_PROJECTS = MAX_PLAN_MINUTES / PLAN_MINUTES_STEP;
 

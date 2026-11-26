@@ -1,4 +1,4 @@
-const DAY_MS = 24 * 60 * 60 * 1000;
+import { MS_PER_DAY } from 'src/lib/consts';
 
 export const INVITATION_VALID_DAYS = 7;
-export const INVITATION_VALID_MS = INVITATION_VALID_DAYS * DAY_MS;
+export const INVITATION_VALID_MS = INVITATION_VALID_DAYS * MS_PER_DAY;

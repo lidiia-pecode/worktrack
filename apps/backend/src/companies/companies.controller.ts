@@ -79,7 +79,7 @@ export class CompaniesController {
   /** The company with the standard day in force today and its scheduled change. */
   private async respond(companyId: string): Promise<CompanyResponseDto> {
     const [company, standardDay] = await Promise.all([
-      this.companiesService.findCurrentCompany(companyId),
+      this.companiesService.findById(companyId),
       this.capacity.standardDayFor(companyId),
     ]);
 

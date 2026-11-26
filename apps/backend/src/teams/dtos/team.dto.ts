@@ -53,7 +53,7 @@ export class AddTeamMemberDto {
   leaveCurrentTeam?: boolean;
 
   /** The first day on the team: today unless given, and never after it. */
-  @IsOptional()
+  @OptionalNotNull()
   @IsDateWithoutTimeString()
   date?: string;
 }

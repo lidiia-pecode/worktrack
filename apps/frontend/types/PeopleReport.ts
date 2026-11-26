@@ -2,7 +2,7 @@ import { UserStatus } from "./enums";
 import { TeamMove } from "./Timelog";
 import { ReportCoverage } from "./HoursReport";
 
-export interface PeopleReportFigures {
+interface PeopleReportFigures {
   loggedMinutes: number;
   billableMinutes: number;
   nonBillableMinutes: number;

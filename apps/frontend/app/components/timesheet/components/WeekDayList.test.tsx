@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
-import { Absence, PlanningEntry, ProjectActivity, TimeLog } from "@/types";
+import { Absence, PlanningEntry, TimeLog } from "@/types";
 import { AbsenceType } from "@/types/enums";
 
 import { TimesheetDay } from "../helpers/day-state";
@@ -20,7 +20,7 @@ const entry: TimeLog = {
   projectActivity: {
     project: { id: "project-atlas", name: "Atlas" },
     activity: { name: "Design" },
-  } as ProjectActivity,
+  } as TimeLog["projectActivity"],
 };
 
 const plan = {

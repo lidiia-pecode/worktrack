@@ -233,6 +233,7 @@ export class AbsencesService {
         payload.endDate,
       );
       await this.capacity.assertEmployedOn(
+        manager,
         user.companyId,
         ownerId,
         payload.startDate,
@@ -319,6 +320,7 @@ export class AbsencesService {
 
       if (moved) {
         await this.capacity.assertEmployedOn(
+          manager,
           user.companyId,
           ownerId,
           startDate,
@@ -597,7 +599,12 @@ export class AbsencesService {
     date: string,
     minutes: number,
   ): Promise<void> {
-    const workingDay = await this.workingMinutesOn(companyId, userId, date);
+    const workingDay = await this.workingMinutesOn(
+      companyId,
+      userId,
+      date,
+      manager,
+    );
     if (workingDay === 0) {
       throw new BadRequestException(
         `${formatDay(date)} has no working hours, so part of it can't be taken off.`,
@@ -631,9 +638,15 @@ export class AbsencesService {
     companyId: string,
     userId: string,
     date: string,
+    manager?: EntityManager,
   ): Promise<number> {
     if (!isWorkingDay(date)) return 0;
-    const timeline = await this.capacity.timelineFor(companyId, userId, date);
+    const timeline = await this.capacity.timelineFor(
+      companyId,
+      userId,
+      date,
+      manager,
+    );
     return Math.floor(timeline.minutesPerDayOn(date));
   }
 
@@ -773,10 +786,13 @@ export class AbsencesService {
     for (const planner of planners) {
       const theirs = removed.filter((plan) => plan.plannerId === planner.id);
       const dates = theirs.map((plan) => plan.date).sort();
-      const inView = await this.teamVisibility.daysInView(planner, [ownerId], {
-        from: dates[0],
-        to: dates[dates.length - 1],
-      });
+      const inView = await this.teamVisibility.daysInView(
+        planner,
+        [ownerId],
+        { from: dates[0], to: dates[dates.length - 1] },
+        undefined,
+        manager,
+      );
       const outside = inView.get(ownerId)?.outside ?? [];
       const reached = theirs.filter(
         (plan) => !outside.some((span) => isWithinSpan(span, plan.date)),

@@ -4,7 +4,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 
-import { DataSource } from 'typeorm';
+import { DataSource, EntityManager } from 'typeorm';
 
 import { User } from 'src/users/entities/user.entity';
 import { Company } from 'src/companies/entities/company.entity';
@@ -24,7 +24,6 @@ import { PasswordService } from './password.service';
 import { SessionService } from './session.service';
 import { TokenService } from './token.service';
 import { PasswordResetService } from './password-reset.service';
-import { MailService } from 'src/mail/mail.service';
 import { ConfigService } from '@nestjs/config';
 
 @Injectable()
@@ -32,7 +31,6 @@ export class AuthService {
   constructor(
     private readonly passwordService: PasswordService,
     private readonly passwordResetService: PasswordResetService,
-    private readonly mailService: MailService,
     private readonly tokenService: TokenService,
     private readonly sessionService: SessionService,
     private readonly usersService: UsersService,
@@ -108,13 +106,11 @@ export class AuthService {
       throw new UnauthorizedException('User company has changed');
     }
 
-    // 1. hash the token that came from the client
     const incomingRefreshHash = this.tokenService.hashRefreshToken(
       refreshToken,
       session.id,
     );
 
-    // 2. new refresh token and its hash
     const newRefreshToken = this.tokenService.createRefreshToken({
       id: user.id,
       companyId: user.companyId,
@@ -128,7 +124,8 @@ export class AuthService {
 
     const newExpiresAt = this.sessionService.getSessionExpirationDate();
 
-    // 3. ATOMIC UPDATE:
+    // Rotates only while the session still stores this token's hash, so a
+    // reused token or a refresh that lost a race to another one fails here.
     const isUpdated = await this.sessionService.rotateRefreshHash(
       session.id,
       incomingRefreshHash,
@@ -137,7 +134,6 @@ export class AuthService {
       metadata,
     );
 
-    // 4. Handle failed update (Token Reuse or concurrent retry)
     if (!isUpdated) {
       const currentSession = await this.sessionService.findById(session.id);
 
@@ -178,7 +174,6 @@ export class AuthService {
       );
     }
 
-    // 5. return new Access Token
     const accessToken = this.tokenService.createAccessToken({
       id: user.id,
       email: user.email,
@@ -307,40 +302,36 @@ export class AuthService {
     newPassword: string,
     metadata: SessionMetadata,
   ) {
+    // The link, the account and the password rule are checked before the slow
+    // hash, so a made-up link costs no hash and the transaction doesn't hold
+    // its connection through one. The transaction checks the link and the
+    // account again as it uses the link up.
+    const pendingToken = await this.passwordResetService.findUsableToken(token);
+    const currentUser = await this.findResettableUser(pendingToken.userId);
+
+    if (currentUser.passwordHash) {
+      const isSamePassword = await this.passwordService.verify(
+        newPassword,
+        currentUser.passwordHash,
+      );
+
+      if (isSamePassword) {
+        throw new ConflictException(
+          'New password must be different from your current password',
+        );
+      }
+    }
+
+    const passwordHash = await this.passwordService.hash(newPassword);
+
     return this.dataSource.transaction(async (manager) => {
       const resetToken = await this.passwordResetService.consumeToken(
         token,
         manager,
       );
 
-      const user = await this.usersService.findUserByIdWithCompany(
-        resetToken.userId,
-        manager,
-      );
-
-      if (!user) {
-        throw new UnauthorizedException(
-          'This reset link has expired or was already used.',
-        );
-      }
-
       // Refusing rolls back the transaction, so the link stays unused.
-      this.authPolicyService.validateUserAccess(user);
-
-      if (user.passwordHash) {
-        const isSamePassword = await this.passwordService.verify(
-          newPassword,
-          user.passwordHash,
-        );
-
-        if (isSamePassword) {
-          throw new ConflictException(
-            'New password must be different from your current password',
-          );
-        }
-      }
-
-      const passwordHash = await this.passwordService.hash(newPassword);
+      const user = await this.findResettableUser(resetToken.userId, manager);
 
       await this.usersService.updatePassword(
         user.id,
@@ -353,5 +344,26 @@ export class AuthService {
 
       return this.sessionService.createSession(user, metadata, manager);
     });
+  }
+
+  /** The person a reset link is for, refused as sign-in would refuse them. */
+  private async findResettableUser(
+    userId: string,
+    manager?: EntityManager,
+  ): Promise<User> {
+    const user = await this.usersService.findUserByIdWithCompany(
+      userId,
+      manager,
+    );
+
+    if (!user) {
+      throw new UnauthorizedException(
+        'This reset link has expired or was already used.',
+      );
+    }
+
+    this.authPolicyService.validateUserAccess(user);
+
+    return user;
   }
 }

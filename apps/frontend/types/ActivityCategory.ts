@@ -1,5 +1,4 @@
 import { Activity, PaginatedResponse, SearchablePaginationParams } from ".";
-import { Company } from "./Company";
 import {
   ActCategoryStatus,
   ActiveActivitiesAction,
@@ -22,8 +21,6 @@ export interface ActivityCategory {
   status: ActCategoryStatus;
   createdAt: string;
   updatedAt: string;
-  company?: Company;
-  activities?: Activity[];
 }
 
 export interface ActivityCategoryPayload {
@@ -65,10 +62,7 @@ export interface CategoryActivity {
   projectsCount?: number;
 }
 
-export interface ActivityCategoryDetails extends Omit<
-  ActivityCategory,
-  "activities"
-> {
+export interface ActivityCategoryDetails extends ActivityCategory {
   /** Every activity in it, archived ones included. */
   activities: CategoryActivity[];
 }

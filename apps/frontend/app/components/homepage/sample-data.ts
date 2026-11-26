@@ -10,7 +10,7 @@ export const SAMPLE_PROJECTS = {
 
 type SampleProjectKey = keyof typeof SAMPLE_PROJECTS;
 
-export type SampleDay = {
+type SampleDay = {
   day: string;
   entries: { project: SampleProjectKey; minutes: number }[];
   absence?: string;

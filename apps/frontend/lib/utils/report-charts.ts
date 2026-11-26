@@ -74,7 +74,7 @@ const TICK_STEPS_HOURS = [
 /** An axis has at most this many intervals, so its labels never crowd. */
 const MAX_TICK_INTERVALS = 4;
 
-export interface HourScale {
+interface HourScale {
   /** Where the scale ends, a round number at or just above the largest figure. */
   endMinutes: number;
   /** From 0 to `endMinutes`, evenly spaced. */
@@ -99,7 +99,7 @@ export const hourScale = (maxMinutes: number): HourScale => {
 };
 
 /** Categories shown with a colour of their own; the rest share a grey "Other". */
-export const CATEGORY_SLOTS = 5;
+const CATEGORY_SLOTS = 5;
 
 export const NO_CATEGORY = "No category";
 export const OTHER_CATEGORIES = "Other";

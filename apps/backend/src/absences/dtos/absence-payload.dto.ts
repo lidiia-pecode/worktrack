@@ -1,3 +1,4 @@
+import { MINUTES_PER_DAY } from 'src/lib/consts';
 import { TrimString } from 'src/lib/decorators';
 import {
   IsEnum,
@@ -14,9 +15,6 @@ import { OmitType, PartialType } from '@nestjs/swagger';
 import { IsDateWithoutTimeString } from 'src/lib/validators/IsDateWithoutTimeString';
 import { AbsenceType } from '../enums/absence-type.enum';
 
-/** No day is longer; the person's own working day is checked on save. */
-const MAX_ABSENCE_MINUTES = 24 * 60;
-
 export class AbsencePayload {
   @IsOptional()
   @IsUUID()
@@ -31,11 +29,14 @@ export class AbsencePayload {
   @IsDateWithoutTimeString()
   endDate!: string;
 
-  /** Part of one day; left out or null for whole days. */
+  /**
+   * Part of one day, left out or null for whole days. The person's own
+   * working day is checked on save.
+   */
   @IsOptional()
   @IsInt()
   @Min(1)
-  @Max(MAX_ABSENCE_MINUTES)
+  @Max(MINUTES_PER_DAY)
   minutes?: number | null;
 
   @IsOptional()

@@ -11,7 +11,10 @@ import { ActCategoriesModule } from './activity-categories/activity-categories.m
 import { PlanningModule } from './planning/planning.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { envValidationSchema } from './config/env.validation';
-import { databaseConnectionOptions } from './config/database.options';
+import {
+  databaseConnectionOptions,
+  readValidatedConfig,
+} from './config/database.options';
 import { ScheduleModule } from '@nestjs/schedule';
 import { CompaniesModule } from './companies/companies.module';
 import { TeamsModule } from './teams/teams.module';
@@ -52,7 +55,7 @@ import { AccessGuard, RolesGuard } from './auth/guards';
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
-        ...databaseConnectionOptions((key) => config.get<string>(key)),
+        ...databaseConnectionOptions(readValidatedConfig(config)),
         autoLoadEntities: true,
       }),
     }),

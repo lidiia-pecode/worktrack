@@ -251,6 +251,25 @@ checked at sign-in and on every request, but nothing sets it;
 `AuthSession.lastActivityAt` is written and never read; `Company.currency` and
 `Company.deletedAt` have no behaviour behind them.
 
+**The company slug is kept up and never read** — _debt._ Every sign-up and
+company rename looks for a free slug, up to 100 queries in sequence
+(`CompaniesService`), and the column has a unique index, yet only the seed
+reads it. After 100 companies whose names reduce to the same slug ("Test",
+"test!"), sign-up and rename are refused. The fix drops the column, index and
+retry (a destructive migration), with the seed finding its company another way.
+
+**Toasts bring their own colours** — _UX, low._ `<Toaster richColors>`
+(`app/layout.tsx`) draws success and error toasts in sonner's palette, the one
+visible element outside the tokens in `globals.css`, while the
+`--color-*-foreground` mappings for primary, destructive, success and warning
+are used by nothing. The fix themes sonner through the `success`,
+`destructive` and `warning` tokens and drops the unused mappings.
+
+**`REFRESH_TOKEN_REUSE_GRACE_MS` is not in milliseconds** — _debt, low._ It
+takes a duration such as `30s`, as the other token settings do. Renaming it
+means changing the host's environment in the same deploy, or the setting falls
+back to its default unnoticed.
+
 **Accessibility, wording and the tablet width have had no pass of their own**
 — _UX._ Each screen was checked as it was built; nobody has gone through the
 whole product for these three.
@@ -297,8 +316,9 @@ own history, which nobody has tried restoring from.
 **Email goes out from Resend's test sender** — _reliability._ Production needs
 the company's sending domain verified. A failed send isn't retried.
 
-**No database timeouts** — _reliability, low._ No `statement_timeout`, and the
-default pool of 10 (`database.options.ts`).
+**No statement or lock timeout** — _reliability, low._ A request waits at most
+ten seconds for a free connection from the pool of 10 (`database.options.ts`),
+but a running query or a wait on a row lock has no limit.
 
 **Rate limits** — _security and reliability._ The counters live in each
 process's memory, so a restart resets them and two instances would count

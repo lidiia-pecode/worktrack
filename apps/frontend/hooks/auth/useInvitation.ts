@@ -24,27 +24,23 @@ export const useInvitations = () => {
     mutationFn: InvitationsClientApi.create,
 
     onSuccess: () => {
-      invalidateInvitations();
-
       toast.success("Invitation sent");
     },
 
     // A failed email still leaves the invitation saved, with a new link.
-    onError: invalidateInvitations,
+    onSettled: invalidateInvitations,
   });
 
   const resend = useMutation({
     mutationFn: InvitationsClientApi.resend,
 
     onSuccess: () => {
-      invalidateInvitations();
-
       toast.success(
         "Invitation sent again. The previous link no longer works.",
       );
     },
 
-    onError: invalidateInvitations,
+    onSettled: invalidateInvitations,
   });
 
   const revoke = useMutation({

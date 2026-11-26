@@ -11,7 +11,7 @@ import { FormSelect } from "../FormSelect";
 import { SearchInput } from "../inputs/SearchInput";
 import { useTeamChoice } from "../useTeamChoice";
 
-export const ALL_OPTION = "all";
+const ALL_OPTION = "all";
 
 const STATUS_SUFFIX: Record<ProjectStatus, string> = {
   [ProjectStatus.ACTIVE]: "",

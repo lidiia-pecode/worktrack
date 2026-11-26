@@ -1,7 +1,8 @@
 import { PaginatedResponse, PaginationParams } from ".";
 import { UserStatus } from "./enums";
 import { ExpectedDay } from "./Capacity";
-import { ProjectActivity } from "./ProjectActivities";
+import { Activity } from "./Activities";
+import { ProjectActivity, ProjectSummary } from "./ProjectActivities";
 import { UserName } from "./User";
 
 /**
@@ -17,16 +18,14 @@ export interface TimeLog {
   date: string;
   createdAt: string;
   updatedAt: string;
-  /** Who added it; null for records from before this was kept. On reads only. */
+  /** Who added it; null for records from before this was kept. */
   createdBy?: UserName | null;
-  /** Who last changed it; null until it is changed. On reads only. */
+  /** Who last changed it; null until it is changed. */
   updatedBy?: UserName | null;
-  /**
-   * Present on list, get and create. Absent on the update response when the
-   * payload did not change `projectActivityId`, because the backend reloads
-   * the row without the relation — so consumers must handle it missing.
-   */
-  projectActivity?: ProjectActivity;
+  projectActivity: ProjectActivity & {
+    project: ProjectSummary;
+    activity: Activity;
+  };
 }
 
 export interface TimeLogPayload {
@@ -95,7 +94,7 @@ export interface TeamMove {
   direction: "in" | "out";
 }
 
-export interface TeamSummaryDay {
+interface TeamSummaryDay {
   date: string;
   minutes: number;
   billableMinutes: number;

@@ -4,7 +4,13 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, IsNull, Repository, WhereExpressionBuilder } from 'typeorm';
+import {
+  EntityManager,
+  In,
+  IsNull,
+  Repository,
+  WhereExpressionBuilder,
+} from 'typeorm';
 
 import { TeamMembership } from './entities/team-membership.entity';
 import { TeamRole } from './enums/team-role.enum';
@@ -171,6 +177,7 @@ export class TeamVisibilityService {
     userIds: string[],
     user: AuthUser,
     options: Pick<VisibilityOptions, 'includeSelf'> = {},
+    manager: EntityManager = this.repo.manager,
   ): Promise<Set<string>> {
     const uniqueIds = Array.from(new Set(userIds));
     if (!uniqueIds.length) return new Set();
@@ -185,8 +192,8 @@ export class TeamVisibilityService {
 
     const self = options.includeSelf && includesSelf ? [user.id] : [];
 
-    const qb = this.repo
-      .createQueryBuilder('tm')
+    const qb = manager
+      .createQueryBuilder(TeamMembership, 'tm')
       .select('DISTINCT tm.user_id', 'userId')
       .where('tm.user_id IN (:...scopeUserIds)', { scopeUserIds: uniqueIds })
       .andWhere('tm.company_id = :scopeCompanyId', {
@@ -234,11 +241,15 @@ export class TeamVisibilityService {
     user: AuthUser,
     wording: UserScopeWording,
     range: DateRange,
+    // A transaction's, when one is open (see `CapacityService.calendarFor`).
+    manager: EntityManager = this.repo.manager,
   ): Promise<void> {
-    if (await this.isSelfOrOwnerOf(userId, user)) return;
+    if (await this.isSelfOrOwnerOf(userId, user, manager)) return;
 
     const spans =
-      user.role === UserRole.MANAGER ? await this.reachSpans(userId, user) : [];
+      user.role === UserRole.MANAGER
+        ? await this.reachSpans(userId, user, manager)
+        : [];
 
     // Someone the manager reaches on other days is named with the day missed;
     // anyone else is refused without saying who they are.
@@ -246,7 +257,7 @@ export class TeamVisibilityService {
       const firstMissed = daysOutside(range, spans).at(0)?.from;
       if (!firstMissed) return;
 
-      const person = await this.userRepo.findOne({
+      const person = await manager.findOne(User, {
         select: ['id', 'firstName', 'lastName'],
         where: { id: userId, companyId: user.companyId },
       });
@@ -267,11 +278,12 @@ export class TeamVisibilityService {
   private async isSelfOrOwnerOf(
     userId: string,
     user: AuthUser,
+    manager: EntityManager = this.repo.manager,
   ): Promise<boolean> {
     if (userId === user.id) return true;
     if (user.role !== UserRole.OWNER) return false;
 
-    const exists = await this.userRepo.exists({
+    const exists = await manager.exists(User, {
       where: { id: userId, companyId: user.companyId },
     });
     if (!exists) throw new NotFoundException('User not found');
@@ -279,8 +291,12 @@ export class TeamVisibilityService {
   }
 
   /** The days the manager reaches the person on. */
-  private reachSpans(userId: string, user: AuthUser): Promise<DaySpan[]> {
-    return this.managedSpans(user, [userId]);
+  private reachSpans(
+    userId: string,
+    user: AuthUser,
+    manager?: EntityManager,
+  ): Promise<DaySpan[]> {
+    return this.managedSpans(user, [userId], undefined, manager);
   }
 
   /**
@@ -291,8 +307,9 @@ export class TeamVisibilityService {
     user: AuthUser,
     userIds: string[],
     teamId?: string,
+    manager: EntityManager = this.repo.manager,
   ): Promise<(DaySpan & { userId: string })[]> {
-    const qb = this.repo.manager
+    const qb = manager
       .createQueryBuilder()
       .select([
         'reach.user_id AS "userId"',
@@ -449,8 +466,9 @@ export class TeamVisibilityService {
     userIds: string[],
     range: DateRange,
     teamId?: string,
+    manager?: EntityManager,
   ): Promise<Map<string, DaysInView>> {
-    const spans = await this.viewSpans(user, userIds, teamId);
+    const spans = await this.viewSpans(user, userIds, teamId, manager);
 
     return new Map(
       userIds.map((id) => {
@@ -478,18 +496,21 @@ export class TeamVisibilityService {
     user: AuthUser,
     userIds: string[],
     teamId?: string,
+    manager?: EntityManager,
   ): Promise<Map<string, DaySpan[]> | undefined> {
     if (userIds.length === 0) return undefined;
 
     let rows: (DaySpan & { userId: string })[];
     if (user.role === UserRole.MANAGER) {
-      rows = await this.managedSpans(user, userIds, teamId);
+      rows = await this.managedSpans(user, userIds, teamId, manager);
       // Their own days under a team filter are that team's, led or not.
       if (teamId && userIds.includes(user.id)) {
-        rows.push(...(await this.membershipSpans(user, teamId, [user.id])));
+        rows.push(
+          ...(await this.membershipSpans(user, teamId, [user.id], manager)),
+        );
       }
     } else if (teamId) {
-      rows = await this.membershipSpans(user, teamId, userIds);
+      rows = await this.membershipSpans(user, teamId, userIds, manager);
     } else if (user.role === UserRole.OWNER) {
       return undefined;
     } else {
@@ -509,8 +530,9 @@ export class TeamVisibilityService {
     user: AuthUser,
     teamId: string,
     userIds: string[],
+    manager: EntityManager = this.repo.manager,
   ): Promise<(DaySpan & { userId: string })[]> {
-    const memberships = await this.repo.find({
+    const memberships = await manager.find(TeamMembership, {
       select: ['userId', 'joinedAt', 'leftAt'],
       where: { companyId: user.companyId, teamId, userId: In(userIds) },
     });
@@ -526,10 +548,13 @@ export class TeamVisibilityService {
    * actively lead for a manager. Returns ids so callers can keep their own
    * query shape.
    */
-  async getVisibleTeamIds(user: AuthUser): Promise<string[] | null> {
+  async getVisibleTeamIds(
+    user: AuthUser,
+    manager: EntityManager = this.repo.manager,
+  ): Promise<string[] | null> {
     if (user.role === UserRole.OWNER) return null;
 
-    const memberships = await this.repo.find({
+    const memberships = await manager.find(TeamMembership, {
       select: ['teamId'],
       where: {
         userId: user.id,

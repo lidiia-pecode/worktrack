@@ -8,7 +8,7 @@ import { TeamRole } from "@/types/enums";
 import { leftWithoutManagerText, MembershipWithUser } from "./team-memberships";
 
 /** How a team change's first day reads in a sentence. */
-export interface ChangeDayWords {
+interface ChangeDayWords {
   on: string;
   before: string;
   from: string;
@@ -78,7 +78,7 @@ export const removalCopy = (
 };
 
 /** Someone the picker adds who is in another team, which they leave. */
-export interface PickerMove {
+interface PickerMove {
   name: string;
   fromTeam: Pick<UserTeam, "id" | "name">;
 }

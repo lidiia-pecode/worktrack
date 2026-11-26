@@ -4,7 +4,9 @@ import { handleSessionExpired } from "./handle-session-expired";
 import { parseJsonSafe } from "./parse-json-safe";
 import { refreshSession } from "./refresh-session";
 
-const UNAUTHORIZED = 401;
+export const UNAUTHORIZED = 401;
+export const SESSION_NOT_RENEWED =
+  "Your session could not be renewed just now. Please try again.";
 const SERVICE_UNAVAILABLE = 503;
 
 let refreshPromise: Promise<number | null> | null = null;
@@ -49,7 +51,7 @@ export async function authorizedFetch(
   if (refreshStatus === null || refreshStatus >= 400) {
     throw {
       statusCode: refreshStatus ?? SERVICE_UNAVAILABLE,
-      message: "Your session could not be renewed just now. Please try again.",
+      message: SESSION_NOT_RENEWED,
     };
   }
 

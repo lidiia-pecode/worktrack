@@ -677,10 +677,20 @@ describe('UsersService scope', () => {
       expect(archived.status).toBe(UserStatus.DEACTIVATED);
       expect(archived.lastWorkingDay).toBe(yesterday);
       await expect(
-        capacity.assertEmployedOn(companyId, leaver.id, yesterday),
+        capacity.assertEmployedOn(
+          dataSource.manager,
+          companyId,
+          leaver.id,
+          yesterday,
+        ),
       ).resolves.toBeUndefined();
       await expect(
-        capacity.assertEmployedOn(companyId, leaver.id, today),
+        capacity.assertEmployedOn(
+          dataSource.manager,
+          companyId,
+          leaver.id,
+          today,
+        ),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -822,13 +832,28 @@ describe('UsersService scope', () => {
         { lastWorkingDay, firstDayBack: yesterday },
       ]);
       await expect(
-        capacity.assertEmployedOn(companyId, returner.id, lastWorkingDay),
+        capacity.assertEmployedOn(
+          dataSource.manager,
+          companyId,
+          returner.id,
+          lastWorkingDay,
+        ),
       ).resolves.toBeUndefined();
       await expect(
-        capacity.assertEmployedOn(companyId, returner.id, addDays(today, -2)),
+        capacity.assertEmployedOn(
+          dataSource.manager,
+          companyId,
+          returner.id,
+          addDays(today, -2),
+        ),
       ).rejects.toThrow(BadRequestException);
       await expect(
-        capacity.assertEmployedOn(companyId, returner.id, yesterday),
+        capacity.assertEmployedOn(
+          dataSource.manager,
+          companyId,
+          returner.id,
+          yesterday,
+        ),
       ).resolves.toBeUndefined();
     });
 
@@ -853,7 +878,12 @@ describe('UsersService scope', () => {
       });
       expect(await spellsOf(mistake.id)).toHaveLength(0);
       await expect(
-        capacity.assertEmployedOn(companyId, mistake.id, tomorrow),
+        capacity.assertEmployedOn(
+          dataSource.manager,
+          companyId,
+          mistake.id,
+          tomorrow,
+        ),
       ).resolves.toBeUndefined();
     });
 

@@ -397,7 +397,41 @@ describe('TimeLogsService write scope', () => {
     });
   });
 
+  describe('many saves at once', () => {
+    // pg's own pool size when the options set none.
+    const PG_DEFAULT_POOL_SIZE = 10;
+
+    // More saves than the pool holds: each save holds a connection for its
+    // transaction, so a check that asked the pool for a second one would
+    // leave the saves waiting until the pool gives up on them.
+    it('all finish, one after another, for the same person', async () => {
+      const poolSize =
+        (dataSource.options as { poolSize?: number }).poolSize ??
+        PG_DEFAULT_POOL_SIZE;
+
+      await Promise.all(
+        Array.from({ length: poolSize + 2 }, () =>
+          service.create(logFor(member.id), member),
+        ),
+      );
+    });
+  });
+
   describe('update and delete', () => {
+    it('answers a save with the entry as a list reads it', async () => {
+      const created = await service.create(logFor(member.id), member);
+      const updated = await service.update(
+        created.id,
+        { minutes: 45 },
+        manager,
+      );
+
+      for (const saved of [created, updated]) {
+        expect(saved.projectActivity?.activity?.category).toBeDefined();
+      }
+      expect(updated.updatedBy?.id).toBe(manager.id);
+    });
+
     it("lets an owner change anyone's entry", async () => {
       const id = await existingLogFor(outsider.id);
 

@@ -1,8 +1,6 @@
 import { Transform } from 'class-transformer';
 import { ArrayNotEmpty, IsArray, IsUUID } from 'class-validator';
-
-const toList = ({ value }: { value: unknown }): unknown =>
-  typeof value === 'string' ? value.split(',').filter(Boolean) : value;
+import { toList } from 'src/lib/dtos/to-list.transform';
 
 /** Comma-separated ids, e.g. `?projectIds=a&userIds=b,c`. */
 export class PlanningRemovalCountQuery {

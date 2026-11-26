@@ -1,4 +1,4 @@
-import { CompanyCurrency, CompanyStatus, WeekDay } from "./enums";
+import { CompanyStatus, WeekDay } from "./enums";
 
 export interface Company {
   id: string;
@@ -6,7 +6,7 @@ export interface Company {
   slug: string;
   status: CompanyStatus;
   timezone: string;
-  currency: CompanyCurrency;
+  currency: string;
   weekStartDay: WeekDay;
   /** The standard day in force today. */
   standardWorkHoursPerDay: number;
@@ -14,7 +14,6 @@ export interface Company {
   standardDayChange: StandardDayChange | null;
   createdAt: string;
   updatedAt: string;
-  deletedAt?: string | null;
 }
 
 export interface StandardDayChange {
@@ -25,6 +24,6 @@ export interface StandardDayChange {
 export interface UpdateCompanyPayload {
   companyName?: string;
   timezone?: string;
-  currency?: CompanyCurrency;
+  currency?: string;
   weekStartDay?: WeekDay;
 }

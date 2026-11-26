@@ -20,7 +20,7 @@ const DAYS_NAMED = 3;
 
 const FRIDAY = 5;
 
-export type AttentionKind = "daysWithoutTime" | "projectsOffPlan";
+type AttentionKind = "daysWithoutTime" | "projectsOffPlan";
 
 /** A person or a project named in Needs attention; it opens their panel. */
 export interface AttentionItem {
@@ -43,7 +43,7 @@ export interface AttentionFact {
   items: AttentionItem[];
 }
 
-export interface ReportAttention {
+interface ReportAttention {
   facts: AttentionFact[];
   /** Why a person or a project is marked, by id, for the dot beside its row. */
   people: Map<string, string>;

@@ -486,14 +486,6 @@ export class UsersService {
     return users;
   }
 
-  async findActiveOnlyMany(
-    ids: string[],
-    companyId: string,
-    manager?: EntityManager,
-  ): Promise<User[]> {
-    return this.findUsersByIds(ids, companyId, manager);
-  }
-
   async createInvitedUser(
     payload: {
       companyId: string;
@@ -808,7 +800,7 @@ export class UsersService {
     user: User,
     lastWorkingDay: string,
   ): Promise<void> {
-    const { timezone } = await this.capacity.calendarFor(user.companyId);
+    const { timezone } = await this.capacity.calendarFor(user.companyId, man);
     const today = todayISODate(timezone);
     const joinedOn = isoDateIn(user.createdAt, timezone);
 
@@ -851,7 +843,7 @@ export class UsersService {
     user: User,
     firstDayBack: string,
   ): Promise<void> {
-    const { timezone } = await this.capacity.calendarFor(user.companyId);
+    const { timezone } = await this.capacity.calendarFor(user.companyId, man);
     const today = todayISODate(timezone);
     const isBackWithoutAGapToday =
       user.lastWorkingDay === today && firstDayBack === addDays(today, 1);

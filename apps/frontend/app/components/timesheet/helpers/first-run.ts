@@ -1,5 +1,5 @@
 /** What a week of the timesheet can show for someone who may have nothing to log. */
-export type TimesheetContent = "week" | "notOnProjects" | "noActivities";
+type TimesheetContent = "week" | "notOnProjects" | "noActivities";
 
 interface TimesheetCounts {
   loggableActivities: number;

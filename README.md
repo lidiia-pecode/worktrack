@@ -53,7 +53,7 @@ worktrack/
 Install dependencies:
 
 ```bash
-npm install
+npm ci
 ```
 
 Create the env files from the samples. The sample values work as they are for
@@ -102,7 +102,7 @@ or the first page shows "Something went wrong". Both reload on file changes.
 `Ctrl+C` stops the two apps; PostgreSQL keeps running until `make down`.
 
 After pulling a change to `package.json` or `package-lock.json`, run
-`npm install` again.
+`npm ci` again.
 
 ## Available Commands
 

@@ -209,6 +209,7 @@ export class ProjectsService {
       [...idsToAdd, ...removalCandidates],
       user,
       { includeSelf: true },
+      manager,
     );
 
     if (idsToAdd.some((id) => !assignable.has(id))) {
@@ -220,7 +221,7 @@ export class ProjectsService {
     // Only the newcomers are checked: an existing member stays whatever their
     // status, and this also rejects an id from another company.
     if (idsToAdd.length > 0) {
-      await this.usersService.findActiveOnlyMany(
+      await this.usersService.findUsersByIds(
         idsToAdd,
         project.companyId,
         manager,
@@ -411,11 +412,13 @@ export class ProjectsService {
     userId: string,
     user: AuthUser,
     message: string,
+    manager: EntityManager,
   ): Promise<void> {
     const assignable = await this.teamVisibility.filterVisibleUserIds(
       [userId],
       user,
       { includeSelf: true },
+      manager,
     );
 
     if (!assignable.has(userId)) throw new ForbiddenException(message);
@@ -649,11 +652,12 @@ export class ProjectsService {
         userId,
         user,
         'You can only assign yourself and users in teams you manage',
+        manager,
       );
       if (await this.isMember(project.id, userId, manager)) return;
 
       // Only someone joining must be active; this also rejects another company's id.
-      await this.usersService.findActiveOnlyMany(
+      await this.usersService.findUsersByIds(
         [userId],
         project.companyId,
         manager,
@@ -680,6 +684,7 @@ export class ProjectsService {
         userId,
         user,
         'You can only remove yourself and users in teams you manage',
+        manager,
       );
       if (!(await this.isMember(project.id, userId, manager))) return;
 

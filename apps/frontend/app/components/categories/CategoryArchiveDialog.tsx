@@ -66,7 +66,10 @@ export const CategoryArchiveDialog = ({
   ];
 
   // Without the other categories, the options would wrongly offer only archiving.
-  const loadFailed = impact.isError || activeCategories.isError;
+  // A retry after a failure still counts as checking.
+  const loadFailed =
+    (impact.isError && !impact.isFetching) ||
+    (activeCategories.isError && !activeCategories.isFetching);
   const isReady = Boolean(impact.data) && activeCategories.query.isSuccess;
 
   const close = () => {

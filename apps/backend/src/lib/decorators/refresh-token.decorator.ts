@@ -1,5 +1,3 @@
-//apps/backend/src/auth/decorators/refresh-token.decorator.ts
-
 import {
   createParamDecorator,
   ExecutionContext,

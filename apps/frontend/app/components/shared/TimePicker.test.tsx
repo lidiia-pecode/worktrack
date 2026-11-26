@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
@@ -20,13 +20,12 @@ const Picker = ({ initialMinutes }: { initialMinutes: number }) => {
 };
 
 /**
- * The picker outside its form, as in the time form's header. The form reads
- * the values the moment they change, as react-hook-form's `setValue` does.
+ * The picker outside its form, as in the time form's header. The form saves
+ * the values of its last render, as the absence and plan forms do.
  */
 const PickerInDialog = ({ onSave }: { onSave: (saved: string) => void }) => {
   const [hours, setHours] = useState(1);
   const [minutes, setMinutes] = useState(30);
-  const values = useRef({ hours: 1, minutes: 30 });
 
   return (
     <div
@@ -36,21 +35,15 @@ const PickerInDialog = ({ onSave }: { onSave: (saved: string) => void }) => {
       <TimePicker
         hours={hours}
         minutes={minutes}
-        onHoursChange={(value) => {
-          values.current.hours = value;
-          setHours(value);
-        }}
-        onMinutesChange={(value) => {
-          values.current.minutes = value;
-          setMinutes(value);
-        }}
+        onHoursChange={setHours}
+        onMinutesChange={setMinutes}
         formId="duration-form"
       />
       <form
         id="duration-form"
         onSubmit={(e) => {
           e.preventDefault();
-          onSave(`${values.current.hours}h ${values.current.minutes}m`);
+          onSave(`${hours}h ${minutes}m`);
         }}
       />
       <button type="submit" form="duration-form">

@@ -16,7 +16,8 @@ import {
   Not,
   Repository,
 } from 'typeorm';
-import { createHash, randomBytes } from 'crypto';
+import { randomBytes } from 'crypto';
+import { hashToken } from 'src/lib/utils/hash-token.util';
 
 import { UserRole } from 'src/users/enums/user-role.enum';
 import { UsersService } from 'src/users/users.service';
@@ -218,6 +219,12 @@ export class InvitationsService {
     lastName: string,
     metadata?: SessionMetadata,
   ) {
+    // Checked before the slow hash, so a made-up link costs no hash and the
+    // transaction doesn't hold its connection through one; checked again
+    // under the lock below.
+    await this.findValidInvitation(token, this.invitationRepository);
+    const passwordHash = await this.passwordService.hash(password);
+
     const user = await this.dataSource.transaction(async (manager) => {
       const userRepository = manager.getRepository(User);
 
@@ -232,8 +239,6 @@ export class InvitationsService {
       if (existingUser) {
         throw new ConflictException('A user with this email already exists');
       }
-
-      const passwordHash = await this.passwordService.hash(password);
 
       const user = await this.usersService.createInvitedUser(
         {
@@ -332,7 +337,7 @@ export class InvitationsService {
   ): Promise<void> {
     const rawToken = randomBytes(32).toString('hex');
 
-    invitation.tokenHash = this.hashToken(rawToken);
+    invitation.tokenHash = hashToken(rawToken);
     invitation.expiresAt = new Date(Date.now() + INVITATION_VALID_MS);
 
     const frontendUrl =
@@ -460,7 +465,10 @@ export class InvitationsService {
       ...(manager && { lock: { mode: 'pessimistic_write' as const } }),
     });
 
-    const visibleTeamIds = await this.teamVisibility.getVisibleTeamIds(user);
+    const visibleTeamIds = await this.teamVisibility.getVisibleTeamIds(
+      user,
+      manager,
+    );
 
     if (!invitation || !this.isInScope(invitation, visibleTeamIds)) {
       throw new NotFoundException('Invitation not found');
@@ -505,7 +513,7 @@ export class InvitationsService {
     // Locked on its own: Postgres can't lock the outer joins read below.
     await repository.findOne({
       select: { id: true },
-      where: { tokenHash: this.hashToken(token?.trim() ?? '') },
+      where: { tokenHash: hashToken(token?.trim() ?? '') },
       lock: { mode: 'pessimistic_write' },
     });
 
@@ -522,7 +530,7 @@ export class InvitationsService {
       throw unusableInvitation(UnusableInvitationCode.NOT_FOUND);
     }
 
-    const tokenHash = this.hashToken(normalizedToken);
+    const tokenHash = hashToken(normalizedToken);
 
     const invitation = await repository.findOne({
       where: { tokenHash },
@@ -617,25 +625,23 @@ export class InvitationsService {
       Boolean(id),
     );
 
-    const [hasManager, otherInvitation] = await Promise.all([
-      manager.getRepository(TeamMembership).exists({
-        where: {
-          companyId,
-          teamId,
-          roleInTeam: TeamRole.MANAGER,
-          leftAt: IsNull(),
-        },
-      }),
-      manager.getRepository(Invitation).findOne({
-        where: {
-          companyId,
-          teamId,
-          role: UserRole.MANAGER,
-          status: InvitationStatus.PENDING,
-          ...(ownIds.length ? { id: Not(In(ownIds)) } : {}),
-        },
-      }),
-    ]);
+    const hasManager = await manager.getRepository(TeamMembership).exists({
+      where: {
+        companyId,
+        teamId,
+        roleInTeam: TeamRole.MANAGER,
+        leftAt: IsNull(),
+      },
+    });
+    const otherInvitation = await manager.getRepository(Invitation).findOne({
+      where: {
+        companyId,
+        teamId,
+        role: UserRole.MANAGER,
+        status: InvitationStatus.PENDING,
+        ...(ownIds.length ? { id: Not(In(ownIds)) } : {}),
+      },
+    });
 
     if (hasManager) {
       throw new ConflictException('This team already has a manager');
@@ -712,9 +718,5 @@ export class InvitationsService {
 
   private normalizeEmail(email: string): string {
     return email.trim().toLowerCase();
-  }
-
-  private hashToken(token: string): string {
-    return createHash('sha256').update(token).digest('hex');
   }
 }

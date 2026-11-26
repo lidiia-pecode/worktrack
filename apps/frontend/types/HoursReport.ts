@@ -1,6 +1,6 @@
 import { HoursReportGroupBy } from "./enums";
 
-export interface HoursSplit {
+interface HoursSplit {
   /** Time marked billable, on any project. */
   billableMinutes: number;
   /** Time not marked billable, on any project. */

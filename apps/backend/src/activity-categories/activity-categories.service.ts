@@ -73,8 +73,9 @@ export class ActCategoriesService {
     companyId: string,
     name: string,
     excludeId?: string,
+    manager: EntityManager = this.repo.manager,
   ): Promise<void> {
-    const exists = await this.repo.exists({
+    const exists = await manager.exists(ActCategory, {
       where: {
         companyId,
         name: sameName(name),
@@ -292,7 +293,7 @@ export class ActCategoriesService {
       }
 
       if (payload.name !== category.name) {
-        await this.assertUniqueName(companyId, payload.name, id);
+        await this.assertUniqueName(companyId, payload.name, id, manager);
         category.name = payload.name;
       }
 

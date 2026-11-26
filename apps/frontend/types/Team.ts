@@ -1,5 +1,4 @@
 import { PaginatedResponse, SearchablePaginationParams } from ".";
-import { Company } from "./Company";
 import {
   PreviousManager,
   TeamRole,
@@ -42,7 +41,6 @@ export interface Team {
   memberships?: TeamMembership[];
   createdAt: string;
   updatedAt: string;
-  company: Company;
 }
 
 // TeamArchiveImpactResponse: what still has to leave before it can be archived

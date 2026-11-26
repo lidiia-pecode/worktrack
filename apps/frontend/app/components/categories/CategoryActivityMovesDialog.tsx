@@ -84,11 +84,18 @@ export const CategoryActivityMovesDialog = ({
     linkedProjects.flatMap((query) => query.data?.projects ?? []),
   );
 
+  // Without the other categories, the choice would wrongly offer only archiving.
+  // A retry after a failure still counts as checking.
+  const categoriesFailed =
+    takesOut && activeCategories.isError && !activeCategories.isFetching;
+  const categoriesReady = !takesOut || activeCategories.query.isSuccess;
+
   const targets = activeCategories.items.filter(
     (target) => target.id !== category.id,
   );
   const destination = chosen ?? targets[0]?.id ?? ARCHIVE_ACTIVITY;
-  const archives = takesOut && destination === ARCHIVE_ACTIVITY;
+  const archives =
+    takesOut && categoriesReady && destination === ARCHIVE_ACTIVITY;
   const destinationName = targets.find(
     (target) => target.id === destination,
   )?.name;
@@ -107,9 +114,13 @@ export const CategoryActivityMovesDialog = ({
   const description = [
     movesIn.length > 0 && `${describeMovesIn(movesIn)}.`,
     takesOut &&
-      (archives
-        ? `${names(movesOut)} ${forOut("is", "are")} archived: nobody can log new time on ${forOut("it", "them")}.`
-        : `${names(movesOut)} ${forOut("moves", "move")} to ${destinationName}.`),
+      (categoriesFailed
+        ? "Could not load the other categories. Close this and try again."
+        : !categoriesReady
+          ? "Checking the other categories…"
+          : archives
+            ? `${names(movesOut)} ${forOut("is", "are")} archived: nobody can log new time on ${forOut("it", "them")}.`
+            : `${names(movesOut)} ${forOut("moves", "move")} to ${destinationName}.`),
     "Time already logged stays as it is.",
   ]
     .filter(Boolean)
@@ -135,7 +146,7 @@ export const CategoryActivityMovesDialog = ({
       ]}
       choice={
         takesOut &&
-        !activeCategories.isLoading && (
+        categoriesReady && (
           <FormSelect
             label={forOut("Where it goes", "Where they go")}
             value={destination}
@@ -157,7 +168,7 @@ export const CategoryActivityMovesDialog = ({
       confirmText={archives ? "Archive" : "Move"}
       confirmVariant={archives ? "warning" : "primary"}
       loading={loading}
-      confirmDisabled={takesOut && activeCategories.isLoading}
+      confirmDisabled={!categoriesReady}
       onConfirm={() => {
         onConfirm(destination);
         setChosen(undefined);

@@ -4,11 +4,11 @@ import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 
 import { AuthClient } from "@/lib/api/resources";
-import { User } from "@/types";
+import { CurrentUser } from "@/types";
 import { queryKeys } from "../shared/queryKeys";
 
 export function useAuth() {
-  const me = useQuery<User>({
+  const me = useQuery<CurrentUser>({
     queryKey: queryKeys.auth.me(),
     queryFn: AuthClient.me,
     retry: false,
@@ -16,18 +16,7 @@ export function useAuth() {
     throwOnError: false,
   });
 
-  return {
-    user: me.data ?? null,
-
-    query: {
-      ...me,
-      isLoading: me.isLoading,
-      isFetching: me.isFetching,
-      isError: me.isError,
-      error: me.error ?? null,
-      refetch: me.refetch,
-    },
-  };
+  return { user: me.data ?? null };
 }
 
 /**

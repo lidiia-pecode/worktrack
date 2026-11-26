@@ -1,9 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import { CircleCheck, KeyRound, Link2 } from "lucide-react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useWatch } from "react-hook-form";
 import Link from "next/link";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardBody, CardFooter, CardHeader } from "@/components/ui/card";
@@ -20,6 +22,12 @@ import { useAuth } from "@/hooks/auth/useAuth";
 import { useReportDirty } from "@/hooks/useReportDirty";
 import { User } from "@/types";
 import { GOOGLE_LINK_URL } from "@/lib/constants";
+import {
+  SESSION_NOT_RENEWED,
+  UNAUTHORIZED,
+  handleSessionExpired,
+  refreshSession,
+} from "@/lib/api/core";
 
 export type SignInMethods = Pick<
   User,
@@ -44,7 +52,25 @@ export const SecuritySettings = ({
 
   const { email, hasPassword, googleLinked: isGoogleLinked } = user ?? signIn;
 
-  const handleGoogleLink = () => {
+  const [isLinkingGoogle, setIsLinkingGoogle] = useState(false);
+
+  // The link route is a page load, which can't renew an access token that
+  // expired while the tab sat idle, so the session is renewed before it.
+  const handleGoogleLink = async () => {
+    setIsLinkingGoogle(true);
+    const refreshStatus = await refreshSession();
+
+    if (refreshStatus === UNAUTHORIZED) {
+      handleSessionExpired();
+      return;
+    }
+    if (refreshStatus === null || refreshStatus >= 400) {
+      setIsLinkingGoogle(false);
+      toast.error(SESSION_NOT_RENEWED);
+      return;
+    }
+
+    // Stays busy until the browser leaves for Google.
     window.location.href = GOOGLE_LINK_URL;
   };
 
@@ -120,6 +146,7 @@ export const SecuritySettings = ({
                 type="button"
                 variant="primary"
                 onClick={handleGoogleLink}
+                isLoading={isLinkingGoogle}
               >
                 Link Google
               </Button>

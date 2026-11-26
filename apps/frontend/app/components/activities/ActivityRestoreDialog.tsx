@@ -66,7 +66,13 @@ export const ActivityRestoreDialog = ({
     <ImpactDialog
       isOpen={Boolean(activity)}
       title={activity ? `Restore ${activity.name}?` : ""}
-      description="Its category is archived. Restore the category too, or move it to an active one."
+      description={
+        // Restoring the category too needs no list, so it stays on offer. A
+        // retry after a failure still counts as checking.
+        activeCategories.isError && !activeCategories.isFetching
+          ? "Its category is archived. The active categories could not be loaded, so it can only be restored with its category now; close this and try again to move it."
+          : "Its category is archived. Restore the category too, or move it to an active one."
+      }
       affected={
         activity
           ? [

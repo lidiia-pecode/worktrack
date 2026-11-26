@@ -22,7 +22,6 @@ import { TeamVisibilityService } from 'src/teams/team-visibility.service';
 import { TeamsService } from 'src/teams/teams.service';
 import { TimeLog } from 'src/time-logs/entities/time-log.entity';
 import { TimeLogsService } from 'src/time-logs/time-logs.service';
-import { UserInactivePeriod } from 'src/users/entities/user-inactive-period.entity';
 import { User } from 'src/users/entities/user.entity';
 import { UsersService } from 'src/users/users.service';
 
@@ -42,7 +41,6 @@ export const buildServices = (dataSource: DataSource) => {
     dataSource.getRepository(UserCapacity),
     dataSource.getRepository(Company),
     dataSource.getRepository(User),
-    dataSource.getRepository(UserInactivePeriod),
     dataSource.getRepository(CompanyStandardDay),
     periodLocks,
   );

@@ -48,7 +48,7 @@ export function useTeamOptions() {
   return { options, teams: items, isLoading, isError };
 }
 
-export const teamDetailsQuery = (teamId: string) => ({
+const teamDetailsQuery = (teamId: string) => ({
   queryKey: queryKeys.teams.detail(teamId),
   queryFn: () => TeamsClientApi.getById(teamId),
 });
