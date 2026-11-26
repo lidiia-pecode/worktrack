@@ -8,15 +8,12 @@ type TimelogDisplay = {
 };
 
 export function getTimelogDisplay(timelog: TimeLog): TimelogDisplay {
-  const project = timelog.projectActivity?.project;
-  const activity = timelog.projectActivity?.activity;
+  const { project, activity } = timelog.projectActivity;
 
   return {
-    // Falling back to the entry id keeps the colour stable for this entry
-    // instead of collapsing every unlabelled log onto one shade.
-    colorSeed: project?.id ?? timelog.id,
-    projectName: project?.name ?? "Unknown project",
-    activityName: activity?.name ?? "Unknown activity",
+    colorSeed: project.id,
+    projectName: project.name,
+    activityName: activity.name,
   };
 }
 

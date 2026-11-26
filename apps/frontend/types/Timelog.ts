@@ -1,7 +1,8 @@
 import { PaginatedResponse, PaginationParams } from ".";
 import { UserStatus } from "./enums";
 import { ExpectedDay } from "./Capacity";
-import { ProjectActivity } from "./ProjectActivities";
+import { Activity } from "./Activities";
+import { ProjectActivity, ProjectSummary } from "./ProjectActivities";
 import { UserName } from "./User";
 
 /**
@@ -21,7 +22,10 @@ export interface TimeLog {
   createdBy?: UserName | null;
   /** Who last changed it; null until it is changed. */
   updatedBy?: UserName | null;
-  projectActivity?: ProjectActivity;
+  projectActivity: ProjectActivity & {
+    project: ProjectSummary;
+    activity: Activity;
+  };
 }
 
 export interface TimeLogPayload {

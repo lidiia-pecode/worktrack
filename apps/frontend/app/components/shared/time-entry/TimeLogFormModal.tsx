@@ -181,8 +181,8 @@ export const TimeLogFormModal = ({
     }
 
     return {
-      projectId: timelog.projectActivity?.project?.id ?? "",
-      activityId: timelog.projectActivity?.activity?.id ?? "",
+      projectId: timelog.projectActivity.project.id,
+      activityId: timelog.projectActivity.activity.id,
       hours: Math.floor(timelog.minutes / 60),
       minutes: timelog.minutes % 60,
       note: timelog.note ?? "",

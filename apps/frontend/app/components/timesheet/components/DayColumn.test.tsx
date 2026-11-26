@@ -16,6 +16,10 @@ const entry: TimeLog = {
   date: "2026-10-14",
   createdAt: "2026-10-14T09:00:00Z",
   updatedAt: "2026-10-14T09:00:00Z",
+  projectActivity: {
+    project: { id: "project-atlas", name: "Atlas" },
+    activity: { name: "Design" },
+  } as TimeLog["projectActivity"],
 };
 
 const plan = (projectName: string, plannedMinutes: number) =>
