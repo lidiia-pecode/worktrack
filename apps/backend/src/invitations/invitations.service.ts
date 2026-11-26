@@ -16,7 +16,8 @@ import {
   Not,
   Repository,
 } from 'typeorm';
-import { createHash, randomBytes } from 'crypto';
+import { randomBytes } from 'crypto';
+import { hashToken } from 'src/lib/utils/hash-token.util';
 
 import { UserRole } from 'src/users/enums/user-role.enum';
 import { UsersService } from 'src/users/users.service';
@@ -336,7 +337,7 @@ export class InvitationsService {
   ): Promise<void> {
     const rawToken = randomBytes(32).toString('hex');
 
-    invitation.tokenHash = this.hashToken(rawToken);
+    invitation.tokenHash = hashToken(rawToken);
     invitation.expiresAt = new Date(Date.now() + INVITATION_VALID_MS);
 
     const frontendUrl =
@@ -512,7 +513,7 @@ export class InvitationsService {
     // Locked on its own: Postgres can't lock the outer joins read below.
     await repository.findOne({
       select: { id: true },
-      where: { tokenHash: this.hashToken(token?.trim() ?? '') },
+      where: { tokenHash: hashToken(token?.trim() ?? '') },
       lock: { mode: 'pessimistic_write' },
     });
 
@@ -529,7 +530,7 @@ export class InvitationsService {
       throw unusableInvitation(UnusableInvitationCode.NOT_FOUND);
     }
 
-    const tokenHash = this.hashToken(normalizedToken);
+    const tokenHash = hashToken(normalizedToken);
 
     const invitation = await repository.findOne({
       where: { tokenHash },
@@ -717,9 +718,5 @@ export class InvitationsService {
 
   private normalizeEmail(email: string): string {
     return email.trim().toLowerCase();
-  }
-
-  private hashToken(token: string): string {
-    return createHash('sha256').update(token).digest('hex');
   }
 }

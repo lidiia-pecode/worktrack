@@ -4,7 +4,9 @@ export const envValidationSchema = Joi.object({
   // Database Configuration
   // Either DATABASE_URL on its own, or the five DB_* values.
   DATABASE_URL: Joi.string().uri({ scheme: ['postgres', 'postgresql'] }),
-  DATABASE_SSL: Joi.boolean().default(false),
+  // Exactly `true` or `false`: the migration CLI and the seed guard compare
+  // the text, so another case would turn TLS on in the app only.
+  DATABASE_SSL: Joi.boolean().sensitive().default(false),
 
   DB_HOST: Joi.string().when('DATABASE_URL', {
     is: Joi.exist(),

@@ -103,9 +103,11 @@ rate limit, `AccessGuard`, then `RolesGuard` with the route's `@Role(...)`.
 `app.http.spec.ts` calls every route signed out and expects a 401 from all but
 the `@Public()` ones (the Google link callback redirects to Settings instead);
 `route-roles.spec.ts` holds the roles of every route.
-Requests are limited to 100 a minute per session; sign-in, sign-up and the
-password routes have tighter limits per client address and per account
-(`auth/rate-limit/`).
+Requests are limited to 100 a minute per session, or per client address
+without one. Tighter limits a minute (`auth/rate-limit/`): sign-in, sign-up and
+forgot-password 20 per client address and 5 per email; reset-password and
+completing a Google link 20 per client address; a password change 5 per session
+and 5 per account; refresh 20 and sending an invitation 20 per session.
 
 **Google.** Four OAuth flows, each with its own strategy, callback URL and
 state cookie: sign-in, sign-up (the only one that may start a company),
@@ -117,10 +119,13 @@ a link with the account's password or to name a new company, which a
 started from with `?error=<code>`, and the frontend turns the code into text
 (`apps/frontend/lib/constants/auth-errors.ts`).
 
-**One-time tokens.** Google sign-up and link tokens, password-reset tokens and
-invitation tokens are random, short-lived, single-use and stored only as
-SHA-256 hashes. Each is used inside a transaction, so a completion that fails
-(a wrong password, a missing name) rolls back and the link still works.
+**One-time tokens.** Google sign-up and link tokens (`GOOGLE_TOKEN_EXPIRES_IN`,
+5 minutes), password-reset tokens (`PASSWORD_RESET_TOKEN_EXPIRES_IN`, 15
+minutes) and invitation tokens (7 days, `INVITATION_VALID_DAYS`) are random,
+single-use and stored only as SHA-256 hashes. A wrong password is refused
+before the token is touched, and the token is used up inside a transaction, so
+a completion refused there (a password changed meanwhile, a missing name) rolls
+back; either way the link still works.
 
 **Passwords.** Hashed with scrypt
 (`apps/backend/src/lib/utils/hash-password.util.ts`) and compared in constant
@@ -130,16 +135,18 @@ before hashing, so a made-up token costs no hash, and hashes before its
 transaction, which checks the token again as it uses it up; a hash inside a
 transaction would hold its database connection while it waits.
 
-**On the frontend.** The browser reaches the backend only through
-`/api/backend/*` on the frontend's domain ([`workflow.md`](./workflow.md)), so
-the cookies belong to the frontend. Two places renew an expired access token:
-`apps/frontend/proxy.ts` before a page renders, and `apiClient`
+**On the frontend.** The browser reaches the backend only on the frontend's
+domain: data through `/api/backend/*` ([`workflow.md`](./workflow.md)), and a
+refresh through the Next route `/api/auth/refresh`, which calls the backend
+itself. So the cookies belong to the frontend. Three places renew an expired
+access token: `apps/frontend/proxy.ts` before a page renders; `apiClient`
 (`apps/frontend/lib/api/core/http-client.ts`) when a data request gets a 401,
-with one shared refresh and one retry. Link Google in Settings renews the
-session itself before it leaves for Google, since that route is a page load. Only a refused refresh (401) ends the session; a
-throttled refresh or a backend that can't be reached is an ordinary failed
-request. `basicClient` never refreshes, so it is only for routes that need no
-session, such as sign-in, sign-up and reset.
+with one shared refresh and one retry; and Link Google in Settings before it
+leaves for Google, since that route is a page load. The session ends only on a
+401 from the refresh, or from the retry after it; a throttled refresh or a
+backend that can't be reached is an ordinary failed request. `basicClient`
+never refreshes, so it is only for routes that need no session, such as
+sign-in, sign-up and reset.
 
 **Rules any change must keep.**
 

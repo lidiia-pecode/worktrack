@@ -398,20 +398,21 @@ describe('TimeLogsService write scope', () => {
   });
 
   describe('many saves at once', () => {
-    // More than pg's default pool of ten: each save holds a connection for
-    // its transaction, so a check that asked the pool for a second one would
-    // leave every save waiting for ever.
-    const MORE_SAVES_THAN_THE_POOL_HOLDS = 12;
+    // pg's own pool size when the options set none.
+    const PG_DEFAULT_POOL_SIZE = 10;
 
+    // More saves than the pool holds: each save holds a connection for its
+    // transaction, so a check that asked the pool for a second one would
+    // leave the saves waiting until the pool gives up on them.
     it('all finish, one after another, for the same person', async () => {
-      const saves = await Promise.allSettled(
-        Array.from({ length: MORE_SAVES_THAN_THE_POOL_HOLDS }, () =>
+      const poolSize =
+        (dataSource.options as { poolSize?: number }).poolSize ??
+        PG_DEFAULT_POOL_SIZE;
+
+      await Promise.all(
+        Array.from({ length: poolSize + 2 }, () =>
           service.create(logFor(member.id), member),
         ),
-      );
-
-      expect(saves.filter((save) => save.status === 'fulfilled')).toHaveLength(
-        MORE_SAVES_THAN_THE_POOL_HOLDS,
       );
     });
   });

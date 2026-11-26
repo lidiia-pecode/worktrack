@@ -1,10 +1,6 @@
 import { TimeLog } from "@/types";
 
-/**
- * `TimeLog.projectActivity` is not guaranteed on every response, so the grid
- * derives its labels here rather than reaching through the relation in each
- * component. One place to update once the API always sends it.
- */
+/** The labels and colour every view shows for an entry, derived in one place. */
 type TimelogDisplay = {
   colorSeed: string;
   projectName: string;

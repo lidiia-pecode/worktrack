@@ -1,5 +1,5 @@
 import 'reflect-metadata';
-import { createHash, randomBytes } from 'crypto';
+import { randomBytes } from 'crypto';
 import { NotFoundException } from '@nestjs/common';
 import { DataSource, IsNull } from 'typeorm';
 
@@ -8,6 +8,7 @@ import { buildServices } from 'src/lib/testing/services';
 import { todayISODate } from 'src/capacity/working-days.util';
 import { timeZoneOnAnotherDay } from 'src/lib/testing/time-zones';
 import { waitUntilBlockedBy } from 'src/lib/testing/locks';
+import { hashToken } from 'src/lib/utils/hash-token.util';
 import { Company } from 'src/companies/entities/company.entity';
 import { Team } from 'src/teams/entities/team.entity';
 import { TeamMembership } from 'src/teams/entities/team-membership.entity';
@@ -96,7 +97,7 @@ describe('InvitationsService acceptance', () => {
       email,
       role,
       status: InvitationStatus.PENDING,
-      tokenHash: createHash('sha256').update(rawToken).digest('hex'),
+      tokenHash: hashToken(rawToken),
       expiresAt: new Date(Date.now() + 3_600_000),
     });
 

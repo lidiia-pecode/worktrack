@@ -21,7 +21,6 @@ export interface ActivityCategory {
   status: ActCategoryStatus;
   createdAt: string;
   updatedAt: string;
-  activities?: Activity[];
 }
 
 export interface ActivityCategoryPayload {
@@ -63,10 +62,7 @@ export interface CategoryActivity {
   projectsCount?: number;
 }
 
-export interface ActivityCategoryDetails extends Omit<
-  ActivityCategory,
-  "activities"
-> {
+export interface ActivityCategoryDetails extends ActivityCategory {
   /** Every activity in it, archived ones included. */
   activities: CategoryActivity[];
 }

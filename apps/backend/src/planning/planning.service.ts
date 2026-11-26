@@ -942,17 +942,22 @@ export class PlanningService {
     knownPartAbsences?: Map<string, Map<string, number>>,
     manager?: EntityManager,
   ): Promise<DayLimitOn> {
-    const [timelines, partAbsences] = await Promise.all([
-      this.capacity.timelinesFor(companyId, userIds, until, undefined, manager),
+    const timelines = await this.capacity.timelinesFor(
+      companyId,
+      userIds,
+      until,
+      undefined,
+      manager,
+    );
+    const partAbsences =
       knownPartAbsences ??
-        this.expectedHours.partAbsenceMinutesFor(
-          companyId,
-          userIds,
-          from,
-          until,
-          manager,
-        ),
-    ]);
+      (await this.expectedHours.partAbsenceMinutesFor(
+        companyId,
+        userIds,
+        from,
+        until,
+        manager,
+      ));
 
     // Whole minutes: a day saved before the 30-minute steps can be 6h 24.4m.
     return (userId, date) =>

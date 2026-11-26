@@ -10,9 +10,17 @@ import { AuthService } from './auth.service';
 
 const stub = <T>(value: unknown): T => value as T;
 
+const personWith = (status: UserStatus) => ({
+  id: 'user-1',
+  companyId: 'company-1',
+  status,
+  passwordHash: null,
+});
+
 describe('AuthService.resetPassword', () => {
   const hash = jest.fn();
-  const findUsableToken = jest.fn().mockResolvedValue({ userId: 'user-1' });
+  const findUsableToken = jest.fn();
+  const findUserByIdWithCompany = jest.fn();
   const updatePassword = jest.fn();
   const createSession = jest.fn();
 
@@ -24,15 +32,7 @@ describe('AuthService.resetPassword', () => {
     }),
     stub({}),
     stub({ deleteAllForUser: jest.fn(), createSession }),
-    stub({
-      findUserByIdWithCompany: jest.fn().mockResolvedValue({
-        id: 'user-1',
-        companyId: 'company-1',
-        status: UserStatus.DEACTIVATED,
-        passwordHash: null,
-      }),
-      updatePassword,
-    }),
+    stub({ findUserByIdWithCompany, updatePassword }),
     stub({}),
     new AuthPolicyService(),
     stub<DataSource>({
@@ -41,7 +41,29 @@ describe('AuthService.resetPassword', () => {
     stub({}),
   );
 
-  it('refuses a deactivated account before changing the password or opening a session', async () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    findUsableToken.mockResolvedValue({ userId: 'user-1' });
+  });
+
+  it('refuses a deactivated account before hashing the password', async () => {
+    findUserByIdWithCompany.mockResolvedValue(
+      personWith(UserStatus.DEACTIVATED),
+    );
+
+    await expect(
+      service.resetPassword('token', 'new-password-1', {}),
+    ).rejects.toMatchObject({
+      response: { code: AuthErrorCode.ACCOUNT_INACTIVE },
+    });
+    expect(hash).not.toHaveBeenCalled();
+  });
+
+  it('refuses an account deactivated while the password was hashed', async () => {
+    findUserByIdWithCompany
+      .mockResolvedValueOnce(personWith(UserStatus.ACTIVE))
+      .mockResolvedValueOnce(personWith(UserStatus.DEACTIVATED));
+
     await expect(
       service.resetPassword('token', 'new-password-1', {}),
     ).rejects.toMatchObject({
@@ -52,7 +74,7 @@ describe('AuthService.resetPassword', () => {
   });
 
   it('refuses an unusable link before hashing the password', async () => {
-    findUsableToken.mockRejectedValueOnce(
+    findUsableToken.mockRejectedValue(
       new UnauthorizedException(
         'This reset link has expired or was already used.',
       ),

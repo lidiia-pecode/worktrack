@@ -135,20 +135,23 @@ describe('GoogleAuthService.validateGoogleLogin', () => {
 
 describe('GoogleAuthService.completeGoogleLinkWithPassword', () => {
   /**
-   * A link token that `consumed` says was or was not still usable, and the
-   * password hash the account holds once the transaction reads it.
+   * A link token that is `usable` when first checked, or `usedUpMeanwhile` by
+   * another request before this one's transaction, and the password hash the
+   * account holds once the transaction reads it.
    */
-  const serviceFor = (
-    consumed: boolean,
+  const serviceFor = ({
+    usable = true,
+    usedUpMeanwhile = false,
     isPasswordValid = true,
     hashInTransaction = 'hash',
-  ) => {
+  } = {}) => {
     const tokenQuery = {
       update: () => tokenQuery,
       set: () => tokenQuery,
       where: () => tokenQuery,
       andWhere: () => tokenQuery,
-      execute: () => Promise.resolve({ affected: consumed ? 1 : 0 }),
+      execute: () =>
+        Promise.resolve({ affected: usable && !usedUpMeanwhile ? 1 : 0 }),
     };
 
     const repositories: Record<string, unknown> = {
@@ -188,14 +191,14 @@ describe('GoogleAuthService.completeGoogleLinkWithPassword', () => {
       stub({
         findOne: () =>
           Promise.resolve(
-            consumed ? { userId: 'user-1', googleId: 'g-1' } : null,
+            usable ? { userId: 'user-1', googleId: 'g-1' } : null,
           ),
       }),
     );
   };
 
   it('returns a wrong password as an error on the password field', async () => {
-    const service = serviceFor(true, false);
+    const service = serviceFor({ isPasswordValid: false });
 
     await expect(
       service.completeGoogleLinkWithPassword('token', 'wrong'),
@@ -205,7 +208,7 @@ describe('GoogleAuthService.completeGoogleLinkWithPassword', () => {
   });
 
   it('refuses the link when the password changed after it was checked', async () => {
-    const service = serviceFor(true, true, 'changed-hash');
+    const service = serviceFor({ hashInTransaction: 'changed-hash' });
 
     await expect(
       service.completeGoogleLinkWithPassword('token', 'Password1'),
@@ -215,7 +218,15 @@ describe('GoogleAuthService.completeGoogleLinkWithPassword', () => {
   });
 
   it('says how to start again when the link cannot be used', async () => {
-    const service = serviceFor(false);
+    const service = serviceFor({ usable: false });
+
+    await expect(
+      service.completeGoogleLinkWithPassword('token', 'Password1'),
+    ).rejects.toThrow('sign-in page');
+  });
+
+  it('refuses a link another request used up after it was checked', async () => {
+    const service = serviceFor({ usedUpMeanwhile: true });
 
     await expect(
       service.completeGoogleLinkWithPassword('token', 'Password1'),

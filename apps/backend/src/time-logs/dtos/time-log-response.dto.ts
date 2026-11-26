@@ -25,12 +25,12 @@ export class TimeLogResponse {
   @Expose()
   date!: string;
 
-  /** Who added it; null for records from before this was kept. On reads only. */
+  /** Who added it; null for records from before this was kept. */
   @Expose()
   @Type(() => UserNameResponse)
   createdBy?: UserNameResponse | null;
 
-  /** Who last changed it; null until it is changed. On reads only. */
+  /** Who last changed it; null until it is changed. */
   @Expose()
   @Type(() => UserNameResponse)
   updatedBy?: UserNameResponse | null;
